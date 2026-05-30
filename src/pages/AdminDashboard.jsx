@@ -1,0 +1,907 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
+import Logo from '../components/Logo';
+import { 
+  LogOut, 
+  BarChart3, 
+  CalendarDays, 
+  Mail, 
+  Settings, 
+  Phone,
+  Check, 
+  X, 
+  Clock, 
+  Trash2,
+  XCircle,
+  Sliders, 
+  Save, 
+  MessageSquare,
+  Shield,
+  Layers,
+  Database,
+  Users,
+  UserPlus,
+  Loader2
+} from 'lucide-react';
+import { db } from '../firebase';
+import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
+import { getApps, initializeApp, getApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
+
+const AdminDashboard = ({ onGoToPublic }) => {
+  const { logout, user, isFirebaseConfigured } = useAuth();
+  const { 
+    menuItems, 
+    bookings, 
+    messages, 
+    cloudinarySettings, 
+    updateBookingStatus, 
+    deleteBooking,
+    updateCloudinarySettings,
+    managerMenuEditingEnabled,
+    managerGalleryEditingEnabled,
+    managerSettingsEditingEnabled,
+    managerBookingsEditingEnabled,
+    updateManagerMenuEditingEnabled,
+    updateManagerGalleryEditingEnabled,
+    updateManagerSettingsEditingEnabled,
+    updateManagerBookingsEditingEnabled
+  } = useData();
+
+  const [activeTab, setActiveTab] = useState('bookings');
+  const [bookingFilter, setBookingFilter] = useState('upcoming');
+  
+  // Cloudinary Settings Form State
+  const [cloudName, setCloudName] = useState(cloudinarySettings.cloudName || 'demo');
+  const [uploadPreset, setUploadPreset] = useState(cloudinarySettings.uploadPreset || 'unsigned_preset');
+  const [settingsSuccess, setSettingsSuccess] = useState(false);
+
+  // Managers registry states
+  const [managers, setManagers] = useState([]);
+  const [loadingManagers, setLoadingManagers] = useState(false);
+  const [managerName, setManagerName] = useState('');
+  const [managerEmail, setManagerEmail] = useState('');
+  const [managerPassword, setManagerPassword] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState(null);
+  const [createSuccess, setCreateSuccess] = useState(false);
+
+  // Dynamic list loader
+  useEffect(() => {
+    const fetchManagers = async () => {
+      setLoadingManagers(true);
+      if (isFirebaseConfigured && db) {
+        try {
+          const querySnapshot = await getDocs(collection(db, 'managers'));
+          const list = [];
+          querySnapshot.forEach((doc) => {
+            list.push(doc.data());
+          });
+          setManagers(list);
+        } catch (e) {
+          console.error("Error loading managers from Firestore:", e);
+        }
+      } else {
+        const saved = localStorage.getItem('tbk_managers');
+        if (saved) {
+          try {
+            setManagers(JSON.parse(saved));
+          } catch(e){}
+        }
+      }
+      setLoadingManagers(false);
+    };
+
+    fetchManagers();
+  }, [isFirebaseConfigured]);
+
+  const handleCreateManager = async (e) => {
+    e.preventDefault();
+    if (!managerName || !managerEmail || !managerPassword) {
+      setCreateError('Please fill out all fields.');
+      return;
+    }
+    if (managerPassword.length < 6) {
+      setCreateError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setCreateLoading(true);
+    setCreateError(null);
+    setCreateSuccess(false);
+
+    const emailClean = managerEmail.toLowerCase().trim();
+
+    if (managers.some(m => m.email.toLowerCase().trim() === emailClean)) {
+      setCreateError('A manager with this email already exists.');
+      setCreateLoading(false);
+      return;
+    }
+
+    try {
+      if (isFirebaseConfigured && db) {
+        const firebaseConfig = {
+          apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+          appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        };
+
+        let secondaryApp;
+        if (getApps().some(app => app.name === 'secondary')) {
+          secondaryApp = getApp('secondary');
+        } else {
+          secondaryApp = initializeApp(firebaseConfig, 'secondary');
+        }
+
+        const secondaryAuth = getAuth(secondaryApp);
+        await createUserWithEmailAndPassword(secondaryAuth, emailClean, managerPassword);
+        await firebaseSignOut(secondaryAuth);
+
+        const newManager = {
+          name: managerName,
+          email: emailClean,
+          role: 'manager',
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'managers', emailClean), newManager);
+        setManagers(prev => [...prev, newManager]);
+      } else {
+        const newManager = {
+          name: managerName,
+          email: emailClean,
+          password: managerPassword,
+          role: 'manager',
+          createdAt: new Date().toISOString()
+        };
+
+        const updatedList = [...managers, newManager];
+        localStorage.setItem('tbk_managers', JSON.stringify(updatedList));
+        setManagers(updatedList);
+      }
+
+      setCreateSuccess(true);
+      setManagerName('');
+      setManagerEmail('');
+      setManagerPassword('');
+      setTimeout(() => setCreateSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error creating manager account:', err);
+      setCreateError(err.message || 'Failed to create manager account. Please try again.');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleDeleteManager = async (email) => {
+    if (!window.confirm(`Are you sure you want to delete the manager account for "${email}"?`)) {
+      return;
+    }
+
+    const emailClean = email.toLowerCase().trim();
+
+    try {
+      if (isFirebaseConfigured && db) {
+        await deleteDoc(doc(db, 'managers', emailClean));
+      }
+      
+      const updatedList = managers.filter(m => m.email.toLowerCase().trim() !== emailClean);
+      localStorage.setItem('tbk_managers', JSON.stringify(updatedList));
+      setManagers(updatedList);
+    } catch (err) {
+      console.error('Error deleting manager role:', err);
+      alert('Failed to delete manager role. Please try again.');
+    }
+  };
+
+  const handleSaveSettings = (e) => {
+    e.preventDefault();
+    updateCloudinarySettings({ cloudName, uploadPreset });
+    setSettingsSuccess(true);
+    setTimeout(() => setSettingsSuccess(false), 3000);
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'Approved':
+        return 'bg-emerald-950/40 border border-emerald-500/80 text-emerald-400';
+      case 'Completed':
+        return 'bg-blue-950/40 border border-blue-500/80 text-blue-400';
+      case 'Rejected':
+        return 'bg-red-950/40 border border-red-500/80 text-red-400';
+      case 'Pending':
+      default:
+        return 'bg-amber-950/40 border border-primary/80 text-primary';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#001b16] text-[#e2e2e2] flex flex-col font-body">
+      
+      {/* Upper Dashboard Header */}
+      <header className="bg-surface-low border-b border-outline-variant/35 py-4 px-6 md:px-8 flex justify-between items-center shadow-lg sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <Logo className="w-9 h-9" />
+          <div>
+            <h1 className="font-headline text-lg md:text-xl text-white font-bold leading-none">TBK Admin Console</h1>
+            <span className="text-[10px] text-on-surface-variant/80 font-light mt-0.5 block flex items-center gap-1">
+              <Shield size={10} className="text-secondary" /> Administrative Level Access
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:block text-right">
+            <p className="text-sm font-semibold text-white">{user.name}</p>
+            <p className="text-[10px] text-on-surface-variant font-light">{user.email}</p>
+          </div>
+          <button 
+            onClick={onGoToPublic}
+            className="flex items-center gap-2 bg-surface hover:bg-surface-high border border-outline-variant/30 text-secondary hover:text-white rounded-lg text-xs font-semibold py-2 px-3 transition-all duration-300 cursor-pointer"
+          >
+            View Live Site
+          </button>
+          <button 
+            onClick={logout}
+            className="flex items-center gap-2 bg-surface hover:bg-surface-high border border-outline-variant/30 hover:border-red-500/40 hover:text-red-400 rounded-lg text-xs font-semibold py-2 px-3 transition-all duration-300 cursor-pointer"
+          >
+            <LogOut size={14} />
+            Logout
+          </button>
+        </div>
+      </header>
+
+      {/* Main Core Dashboard Layout */}
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-8 max-w-7xl mx-auto w-full">
+        
+        {/* SIDE BAR: Navigation & Analytics Summary */}
+        <div className="lg:col-span-3 space-y-6">
+          
+          {/* Active Navigation Tabs */}
+          <div className="bg-surface border border-outline-variant/35 rounded-2xl p-4 shadow-xl space-y-1">
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-3 mb-2">Systems Controls</p>
+            
+            <button
+              onClick={() => setActiveTab('bookings')}
+              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                activeTab === 'bookings'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+              }`}
+            >
+              <CalendarDays size={16} />
+              Event Planners
+            </button>
+
+            <button
+              onClick={() => setActiveTab('messages')}
+              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                activeTab === 'messages'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+              }`}
+            >
+              <Mail size={16} />
+              Guest Inquiries
+            </button>
+
+            <button
+              onClick={() => setActiveTab('cloudinary')}
+              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                activeTab === 'cloudinary'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+              }`}
+            >
+              <Settings size={16} />
+              API Integrations
+            </button>
+
+            <button
+              onClick={() => setActiveTab('permissions')}
+              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                activeTab === 'permissions'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+              }`}
+            >
+              <Shield size={16} />
+              Operations Controls
+            </button>
+
+            <button
+              onClick={() => setActiveTab('staff')}
+              className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                activeTab === 'staff'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+              }`}
+            >
+              <Users size={16} />
+              Manage Staff
+            </button>
+          </div>
+
+          {/* Quick Analytics Summary Box */}
+          <div className="bg-surface border border-outline-variant/35 rounded-2xl p-5 shadow-xl space-y-5">
+            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5 border-b border-outline-variant/15 pb-2">
+              <BarChart3 size={12} className="text-secondary" /> Database Analytics
+            </p>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
+                  <Layers size={14} className="text-primary" /> Menu items
+                </div>
+                <span className="text-sm font-bold text-white bg-surface-low border border-outline-variant/30 px-2.5 py-0.5 rounded-full">{menuItems.length}</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
+                  <CalendarDays size={14} className="text-primary" /> Bookings
+                </div>
+                <span className="text-sm font-bold text-white bg-surface-low border border-outline-variant/30 px-2.5 py-0.5 rounded-full">{bookings.length}</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
+                  <MessageSquare size={14} className="text-primary" /> Guest Messages
+                </div>
+                <span className="text-sm font-bold text-white bg-surface-low border border-outline-variant/30 px-2.5 py-0.5 rounded-full">{messages.length}</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
+                  <Users size={14} className="text-primary" /> Active Managers
+                </div>
+                <span className="text-sm font-bold text-white bg-surface-low border border-outline-variant/30 px-2.5 py-0.5 rounded-full">{managers.length}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* MAIN PANEL CONTENT */}
+        <div className="lg:col-span-9 space-y-6">
+          
+          {activeTab === 'bookings' && (
+            // TAB 1: Banquet bookings manager
+            <div className="bg-surface border border-outline-variant/35 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+              <div className="border-b border-outline-variant/20 pb-4">
+                <h2 className="font-headline text-2xl text-white font-bold flex items-center gap-2">
+                  <CalendarDays className="text-secondary" /> Banquet Bookings Coordinator
+                </h2>
+                <p className="text-xs text-on-surface-variant font-light mt-1">Review event requests, guest capacity slots, and catering allocations.</p>
+              </div>
+
+              {/* Booking Filter Tabs */}
+              <div className="flex border-b border-outline-variant/15 pb-px gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setBookingFilter('upcoming')}
+                  className={`pb-3 pt-1 px-4 font-semibold text-xs tracking-wider uppercase border-b-2 transition-all relative cursor-pointer ${
+                    bookingFilter === 'upcoming'
+                      ? 'border-primary text-primary font-bold'
+                      : 'border-transparent text-on-surface-variant hover:text-white'
+                  }`}
+                >
+                  Upcoming Events ({bookings.filter(b => b.status !== 'Completed').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookingFilter('history')}
+                  className={`pb-3 pt-1 px-4 font-semibold text-xs tracking-wider uppercase border-b-2 transition-all relative cursor-pointer ${
+                    bookingFilter === 'history'
+                      ? 'border-primary text-primary font-bold'
+                      : 'border-transparent text-on-surface-variant hover:text-white'
+                  }`}
+                >
+                  Booking History ({bookings.filter(b => b.status === 'Completed').length})
+                </button>
+              </div>
+
+              {(() => {
+                const filteredBookings = bookings.filter(
+                  (b) => bookingFilter === 'upcoming' ? b.status !== 'Completed' : b.status === 'Completed'
+                );
+
+                return filteredBookings.length === 0 ? (
+                  <div className="text-center py-16 text-on-surface-variant/60 font-light space-y-2 bg-surface-low/30 border border-outline-variant/10 rounded-xl">
+                    <Database className="w-10 h-10 mx-auto text-outline-variant/50 animate-pulse" />
+                    <p>No {bookingFilter === 'upcoming' ? 'upcoming' : 'completed'} banquet bookings found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredBookings.map((booking) => (
+                      <div 
+                        key={booking.id}
+                        className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-4 shadow-sm hover:border-outline-variant/40 transition-colors"
+                      >
+                        {/* Booking Card Header */}
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-outline-variant/10 pb-3">
+                          <div>
+                            <h3 className="text-base font-semibold text-white flex flex-wrap items-center gap-2">
+                              {booking.name} 
+                              <span className="text-[10px] text-on-surface-variant font-light bg-background border border-outline-variant/35 px-2 py-0.5 rounded-full font-sans tracking-normal">ID: {booking.id}</span>
+                              {(booking.isOffline || booking.email === 'offline@bagarakitchen.com' || (booking.notes && booking.notes.includes('[Offline Booking]'))) && (
+                                <span className="bg-amber-950/40 border border-primary/50 text-primary font-bold text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center gap-1">
+                                  Offline Booking
+                                </span>
+                              )}
+                            </h3>
+                            <p className="text-xs text-on-surface-variant font-light mt-0.5 flex items-center gap-1.5 flex-wrap">
+                              <span>{booking.email}</span>
+                              <span className="text-outline-variant/40">|</span>
+                              <span className="flex items-center gap-1.5">
+                                {booking.phone}
+                                <a 
+                                  href={`tel:${booking.phone}`} 
+                                  title={`Call ${booking.name}`}
+                                  className="inline-flex items-center justify-center p-1 rounded-md bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"
+                                >
+                                  <Phone size={10} />
+                                </a>
+                              </span>
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center gap-3">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${getStatusBadgeClass(booking.status)}`}>
+                              {booking.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Booking Details Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-xs font-light">
+                          <div className="space-y-1">
+                            <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Event Date</p>
+                            <p className="text-white font-medium">{booking.date}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Session Time</p>
+                            <p className="text-white font-medium">{booking.session || 'Lunch: 10:30 AM - 03:30 PM'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Guest Capacity</p>
+                            <p className="text-white font-medium">{booking.guests} Guests</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Event Type</p>
+                            <p className="text-white font-medium">{booking.eventType}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Catering Choice</p>
+                            <p className="text-white font-medium">{booking.catering}</p>
+                          </div>
+                        </div>
+
+                        {booking.notes && (
+                          <div className="p-3 bg-background/50 rounded-lg border border-outline-variant/15 text-xs text-on-surface-variant font-light">
+                            <strong className="text-white font-medium">Special Requests:</strong> "{booking.notes}"
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-2 border-t border-outline-variant/10 pt-3">
+                          {booking.status !== 'Approved' && (
+                            <button
+                              onClick={() => updateBookingStatus(booking.id, 'Approved')}
+                              className="bg-emerald-950/40 border border-emerald-500/50 hover:bg-emerald-500 hover:text-white text-emerald-400 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300"
+                            >
+                              <Check size={12} /> Approve Event
+                            </button>
+                          )}
+                          {booking.status !== 'Completed' && (
+                            <button
+                              onClick={() => updateBookingStatus(booking.id, 'Completed')}
+                              className="bg-blue-950/40 border border-blue-500/55 hover:bg-blue-500 hover:text-white text-blue-400 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300"
+                            >
+                              <Clock size={12} /> Mark Completed
+                            </button>
+                          )}
+                          {booking.status !== 'Pending' && (
+                            <button
+                              onClick={() => updateBookingStatus(booking.id, 'Pending')}
+                              className="bg-amber-950/40 border border-primary/50 hover:bg-primary hover:text-white text-primary font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300"
+                            >
+                              <X size={12} /> Set Pending
+                            </button>
+                          )}
+                          {booking.status !== 'Rejected' && (
+                            <button
+                              onClick={() => updateBookingStatus(booking.id, 'Rejected')}
+                              className="bg-red-950/40 border border-red-500/50 hover:bg-red-500 hover:text-white text-red-400 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300"
+                            >
+                              <XCircle size={12} /> Reject Booking
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to permanently delete "${booking.name}'s" banquet booking?`)) {
+                                deleteBooking(booking.id);
+                              }
+                            }}
+                            className="bg-red-950/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400/90 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300 ml-auto"
+                          >
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {activeTab === 'messages' && (
+            // TAB 2: Messages center
+            <div className="bg-surface border border-outline-variant/35 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+              <div className="border-b border-outline-variant/20 pb-4">
+                <h2 className="font-headline text-2xl text-white font-bold flex items-center gap-2">
+                  <Mail className="text-secondary" /> Guest Inquiries Inbox
+                </h2>
+                <p className="text-xs text-on-surface-variant font-light mt-1">Direct feedback queries and banquet inquiries left on the contact form.</p>
+              </div>
+
+              {messages.length === 0 ? (
+                <div className="text-center py-16 text-on-surface-variant/60 font-light space-y-2">
+                  <MessageSquare className="w-10 h-10 mx-auto text-outline-variant/50" />
+                  <p>Inbox is currently empty. No new guest messages.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((msg) => (
+                    <div 
+                      key={msg.id}
+                      className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-3 shadow-sm hover:border-outline-variant/40 transition-colors"
+                    >
+                      <div className="flex justify-between items-start gap-4 border-b border-outline-variant/10 pb-2">
+                        <div>
+                          <h3 className="text-sm font-semibold text-white">{msg.name}</h3>
+                          <p className="text-xs text-primary font-light">{msg.email}</p>
+                        </div>
+                        <span className="text-[10px] text-on-surface-variant font-light">
+                          {new Date(msg.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <p className="text-xs text-on-surface-variant leading-relaxed font-light font-sans py-1">
+                        "{msg.message}"
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'cloudinary' && (
+            // TAB 3: Cloudinary config
+            <div className="bg-surface border border-outline-variant/35 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+              <div className="border-b border-outline-variant/20 pb-4">
+                <h2 className="font-headline text-2xl text-white font-bold flex items-center gap-2">
+                  <Sliders className="text-secondary" /> Cloudinary API Integration
+                </h2>
+                <p className="text-xs text-on-surface-variant font-light mt-1">Configure direct client-side media uploads for your Operations Manager.</p>
+              </div>
+
+              {settingsSuccess && (
+                <div className="p-4 bg-emerald-950/40 border border-emerald-500/50 text-emerald-400 rounded-xl text-xs flex items-center gap-2.5 shadow-md shadow-emerald-500/5">
+                  <Check className="w-4 h-4" />
+                  <span>Cloudinary configurations successfully updated and stored in database.</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveSettings} className="space-y-5 max-w-md">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Cloudinary Cloud Name</label>
+                  <input 
+                    type="text" 
+                    value={cloudName}
+                    onChange={(e) => setCloudName(e.target.value)}
+                    required
+                    placeholder="e.g. your-cloud-name"
+                    className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white placeholder-on-surface-variant/30 focus:outline-none focus:border-primary transition-all"
+                  />
+                  <p className="text-[10px] text-on-surface-variant/70 italic font-light">The unique identifier for your Cloudinary account dashboard.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Unsigned Upload Preset</label>
+                  <input 
+                    type="text" 
+                    value={uploadPreset}
+                    onChange={(e) => setUploadPreset(e.target.value)}
+                    required
+                    placeholder="e.g. food_preset"
+                    className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white placeholder-on-surface-variant/30 focus:outline-none focus:border-primary transition-all"
+                  />
+                  <p className="text-[10px] text-on-surface-variant/70 italic font-light">The unsigned upload preset created in your Cloudinary upload settings page.</p>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="bg-primary hover:bg-[#b08d4b] text-white font-bold py-3 px-8 rounded-xl text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-primary/10 flex items-center gap-2 cursor-pointer duration-300"
+                >
+                  <Save size={16} /> Save Integrations
+                </button>
+              </form>
+            </div>
+          )}
+
+          {activeTab === 'permissions' && (
+            // TAB 4: Operations Permissions Controls
+            <div className="bg-surface border border-outline-variant/35 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+              <div className="border-b border-outline-variant/20 pb-4">
+                <h2 className="font-headline text-2xl text-white font-bold flex items-center gap-2">
+                  <Shield className="text-secondary" /> Manager Access & Permissions Controls
+                </h2>
+                <p className="text-xs text-on-surface-variant font-light mt-1">Configure precise administrative control permissions for different areas of the Operations Manager Dashboard.</p>
+              </div>
+
+              <div className="space-y-4">
+                
+                {/* 1. Menu Cards Control */}
+                <div className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 flex items-center justify-between shadow-sm">
+                  <div className="space-y-1 pr-6 max-w-xl">
+                    <h4 className="text-sm font-semibold text-white">1. Enable Menu Card Uploads</h4>
+                    <p className="text-[11px] text-on-surface-variant font-light leading-relaxed">
+                      Allows the Operations Manager to upload new printed Restaurant Menu cards and split Vegetarian/Non-Vegetarian Banquet catalog PDF documents.
+                    </p>
+                  </div>
+                  <div className="flex items-center flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => updateManagerMenuEditingEnabled(!managerMenuEditingEnabled)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        managerMenuEditingEnabled ? 'bg-primary' : 'bg-surface border-outline-variant/40'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          managerMenuEditingEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Gallery Control */}
+                <div className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 flex items-center justify-between shadow-sm">
+                  <div className="space-y-1 pr-6 max-w-xl">
+                    <h4 className="text-sm font-semibold text-white">2. Enable Gallery Photo Uploads</h4>
+                    <p className="text-[11px] text-on-surface-variant font-light leading-relaxed">
+                      Allows the Operations Manager to add, modify, and delete showcase photographs and high-res imagery displayed inside the public Gallery carousel.
+                    </p>
+                  </div>
+                  <div className="flex items-center flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => updateManagerGalleryEditingEnabled(!managerGalleryEditingEnabled)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        managerGalleryEditingEnabled ? 'bg-primary' : 'bg-surface border-outline-variant/40'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          managerGalleryEditingEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Settings Control */}
+                <div className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 flex items-center justify-between shadow-sm">
+                  <div className="space-y-1 pr-6 max-w-xl">
+                    <h4 className="text-sm font-semibold text-white">3. Enable Operational Settings Updates</h4>
+                    <p className="text-[11px] text-on-surface-variant font-light leading-relaxed">
+                      Allows the Operations Manager to edit operational parameters including the business address, helpline phone numbers, weekday/weekend hours, and Zomato/Swiggy ordering links.
+                    </p>
+                  </div>
+                  <div className="flex items-center flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => updateManagerSettingsEditingEnabled(!managerSettingsEditingEnabled)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        managerSettingsEditingEnabled ? 'bg-primary' : 'bg-surface border-outline-variant/40'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          managerSettingsEditingEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Bookings Control */}
+                <div className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 flex items-center justify-between shadow-sm">
+                  <div className="space-y-1 pr-6 max-w-xl">
+                    <h4 className="text-sm font-semibold text-white">4. Enable Banquet Booking Approvals</h4>
+                    <p className="text-[11px] text-on-surface-variant font-light leading-relaxed">
+                      Allows the Operations Manager to review banquet reservations, approve bookings, and update their operational statuses.
+                    </p>
+                  </div>
+                  <div className="flex items-center flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => updateManagerBookingsEditingEnabled(!managerBookingsEditingEnabled)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        managerBookingsEditingEnabled ? 'bg-primary' : 'bg-surface border-outline-variant/40'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          managerBookingsEditingEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'staff' && (
+            // TAB 5: Manage Managers Staff Tab
+            <div className="bg-surface border border-outline-variant/35 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+              <div className="border-b border-outline-variant/20 pb-4">
+                <h2 className="font-headline text-2xl text-white font-bold flex items-center gap-2">
+                  <Users className="text-secondary" /> Staff & Managers Management
+                </h2>
+                <p className="text-xs text-on-surface-variant font-light mt-1">Create new Operations Manager logins and review existing credentials registry.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                
+                {/* Form to Create Manager */}
+                <div className="md:col-span-5 space-y-4">
+                  <div className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-4 shadow-md">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2 border-b border-outline-variant/15 pb-2">
+                      <UserPlus size={16} className="text-secondary" /> Add Manager Profile
+                    </h3>
+
+                    {createError && (
+                      <div className="p-3 bg-red-950/40 border border-red-500/50 text-red-400 rounded-lg text-[11px] flex items-center gap-2">
+                        <XCircle size={14} className="flex-shrink-0" />
+                        <span>{createError}</span>
+                      </div>
+                    )}
+
+                    {createSuccess && (
+                      <div className="p-3 bg-emerald-950/40 border border-emerald-500/50 text-emerald-400 rounded-lg text-[11px] flex items-center gap-2">
+                        <Check size={14} className="flex-shrink-0" />
+                        <span>Manager credentials registered successfully.</span>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleCreateManager} className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Manager Full Name</label>
+                        <input 
+                          type="text"
+                          required
+                          value={managerName}
+                          onChange={(e) => setManagerName(e.target.value)}
+                          placeholder="e.g. Sai Kiran"
+                          disabled={createLoading}
+                          className="w-full bg-background border border-outline-variant/60 rounded-lg py-2 px-3 text-xs text-white placeholder-on-surface-variant/30 focus:outline-none focus:border-primary transition-all"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Login Email (Mail ID)</label>
+                        <input 
+                          type="email"
+                          required
+                          value={managerEmail}
+                          onChange={(e) => setManagerEmail(e.target.value)}
+                          placeholder="e.g. kiran@bagarakitchen.com"
+                          disabled={createLoading}
+                          className="w-full bg-background border border-outline-variant/60 rounded-lg py-2 px-3 text-xs text-white placeholder-on-surface-variant/30 focus:outline-none focus:border-primary transition-all"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Security Password</label>
+                        <input 
+                          type="password"
+                          required
+                          value={managerPassword}
+                          onChange={(e) => setManagerPassword(e.target.value)}
+                          placeholder="Min 6 characters"
+                          disabled={createLoading}
+                          className="w-full bg-background border border-outline-variant/60 rounded-lg py-2 px-3 text-xs text-white placeholder-on-surface-variant/30 focus:outline-none focus:border-primary transition-all"
+                        />
+                      </div>
+
+                      <button 
+                        type="submit"
+                        disabled={createLoading}
+                        className="w-full bg-primary hover:bg-[#b08d4b] disabled:bg-primary/50 text-white font-bold py-2.5 rounded-lg text-xs transition-all hover:scale-[1.01] active:scale-95 shadow-md flex items-center justify-center gap-1.5 cursor-pointer duration-300 animate-pulse-subtle"
+                      >
+                        {createLoading ? (
+                          <>
+                            <Loader2 size={12} className="animate-spin" />
+                            Creating Login Credentials...
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus size={12} />
+                            Save Staff Credentials
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* List of existing Managers */}
+                <div className="md:col-span-7 space-y-4">
+                  <div className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-4 min-h-[300px] flex flex-col shadow-md">
+                    <h3 className="text-sm font-semibold text-white flex items-center justify-between border-b border-outline-variant/15 pb-2">
+                      <span className="flex items-center gap-2"><Users size={16} className="text-secondary" /> Active Registry</span>
+                      <span className="text-[10px] text-on-surface-variant font-light font-sans bg-background border border-outline-variant/30 px-2 py-0.5 rounded-full">{managers.length} accounts</span>
+                    </h3>
+
+                    {loadingManagers ? (
+                      <div className="flex-grow flex flex-col items-center justify-center text-on-surface-variant/50 text-xs gap-2">
+                        <Loader2 size={24} className="animate-spin text-primary" />
+                        <span>Querying credentials registry...</span>
+                      </div>
+                    ) : managers.length === 0 ? (
+                      <div className="flex-grow flex flex-col items-center justify-center text-center text-on-surface-variant/60 text-xs font-light space-y-2 py-12">
+                        <Users className="w-8 h-8 text-outline-variant/40" />
+                        <p>No Operations Managers registered in the live database.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                        {managers.map((manager, idx) => (
+                          <div 
+                            key={manager.email || idx}
+                            className="p-3.5 bg-background border border-outline-variant/20 hover:border-outline-variant/45 rounded-lg flex items-center justify-between gap-4 transition-all"
+                          >
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-bold text-white truncate">{manager.name}</h4>
+                              <p className="text-[10px] text-primary font-medium truncate mt-0.5">{manager.email}</p>
+                              {manager.createdAt && (
+                                <p className="text-[8px] text-on-surface-variant/70 italic mt-0.5">
+                                  Created: {new Date(manager.createdAt).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDeleteManager(manager.email)}
+                              className="p-2 bg-red-950/10 border border-red-500/20 hover:border-red-500 hover:bg-red-500 hover:text-white text-red-400 rounded-md transition-all duration-300 cursor-pointer flex-shrink-0"
+                              title="Delete manager role"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;

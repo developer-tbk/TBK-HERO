@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #c5a059;
+  --color-secondary: #d4af37;
+  --color-background: #00251e;
+  --color-surface: #00443c;
+  --color-surface-low: #00362f;
+  --color-surface-high: #005047;
+  --color-surface-lowest: #001b16;
+  --color-surface-highest: #005d51;
+  --color-surface-bright: #006b5d;
+  --color-on-surface-variant: #a8c7be;
+  --color-outline: #4f786c;
+  --color-outline-variant: #1a3e35;
+
+  --font-headline: "Playfair Display", serif;
+  --font-body: "Inter", sans-serif;
+  --font-label: "Inter", sans-serif;
+
+  --spacing-stack-sm: 8px;
+  --spacing-stack-md: 24px;
+  --spacing-stack-lg: 48px;
+  --spacing-margin-desktop: 64px;
+  --spacing-margin-mobile: 16px;
+  --spacing-container-max: 1200px;
+  --spacing-gutter: 24px;
+}
+
+/* Custom CSS Extensions */
+body {
+  background-color: #00251e;
+  color: #e2e2e2;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes effervesce {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  50% { opacity: 0.6; }
+  100% { transform: translateY(-120px) scale(1.4); opacity: 0; }
+}
+
+.bubble {
+  position: absolute;
+  background: radial-gradient(circle, rgba(197, 160, 89, 0.6) 0%, rgba(197, 160, 89, 0.1) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: effervesce linear infinite;
+}
+
+.glass-glow {
+  background: radial-gradient(circle, rgba(197, 160, 89, 0.15) 0%, transparent 70%);
+}
+
+.dotted-leader {
+  flex-grow: 1;
+  border-bottom: 1px dotted #c5a059;
+  margin: 0 10px;
+  margin-bottom: 8px;
+}
