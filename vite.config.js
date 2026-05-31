@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import fs from 'fs'
@@ -37,6 +37,34 @@ const localDbPlugin = () => {
               }
             });
           }
+        } else if (req.url === '/api/send-email') {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', async () => {
+              try {
+                req.body = JSON.parse(body);
+
+                // Attach Vercel-like helpers for local middleware compatibility
+                res.status = (code) => {
+                  res.statusCode = code;
+                  return res;
+                };
+                res.json = (data) => {
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify(data));
+                  return res;
+                };
+
+                const { default: sendEmailHandler } = await import('./api/send-email.js');
+                await sendEmailHandler(req, res);
+              } catch (e) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: e.message }));
+              }
+            });
+          }
         } else {
           next();
         }
@@ -46,12 +74,22 @@ const localDbPlugin = () => {
 };
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss(), localDbPlugin()],
-  server: {
-    host: true, // Exposes Vite on the local network (0.0.0.0) so your mobile phone can connect!
-    watch: {
-      ignored: ['**/db.json'] // Prevent infinite HMR refresh loops when writing data locally!
+export default defineConfig(({ mode }) => {
+  // Load environment variables from the root .env file and assign to process.env
+  const env = loadEnv(mode, process.cwd(), '');
+  process.env.SMTP_HOST = env.SMTP_HOST || 'smtp.gmail.com';
+  process.env.SMTP_PORT = env.SMTP_PORT || '587';
+  process.env.SMTP_USER = env.SMTP_USER || 'developer.tbk1@gmail.com';
+  process.env.SMTP_PASS = env.SMTP_PASS || 'kmjtqvagitxlwgir';
+  process.env.SMTP_ADMIN_EMAIL = env.SMTP_ADMIN_EMAIL || 'thebagarakitchen.bar@gmail.com';
+
+  return {
+    plugins: [react(), tailwindcss(), localDbPlugin()],
+    server: {
+      host: true, // Exposes Vite on the local network (0.0.0.0) so your mobile phone can connect!
+      watch: {
+        ignored: ['**/db.json'] // Prevent infinite HMR refresh loops when writing data locally!
+      }
     }
-  }
-})
+  };
+});

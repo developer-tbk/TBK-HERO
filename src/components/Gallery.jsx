@@ -12,8 +12,8 @@ const Gallery = () => {
   if (!galleryImages || galleryImages.length === 0) return null;
 
   return (
-    <section 
-      id="gallery" 
+    <section
+      id="gallery"
       className="py-24 px-6 md:px-8 bg-surface-lowest border-b border-outline-variant/20 relative overflow-hidden"
     >
       {/* Dynamic Gold Light Flares */}
@@ -21,7 +21,7 @@ const Gallery = () => {
       <div className="absolute bottom-1/4 -left-32 w-[350px] h-[350px] rounded-full bg-secondary/3 blur-[100px] pointer-events-none" />
 
       <div className="max-w-6xl mx-auto space-y-16 relative z-10">
-        
+
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-secondary/30 bg-secondary/5 text-xs text-secondary font-bold uppercase tracking-[0.25em]">
@@ -32,7 +32,7 @@ const Gallery = () => {
           </h2>
           <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent mx-auto" />
           <p className="font-body text-base text-on-surface-variant font-light leading-relaxed">
-            Take a visual tour through our opulent Nizami interior, private dining alcoves, and historical clay handi cooking processes.
+            Explore the world of The Bagara Kitchen and Bar-where refined interiors, secluded private dining alcoves, and authentic clay handi cooking come together to create an unforgettable dining experience.
           </p>
         </div>
 
@@ -49,12 +49,12 @@ const Gallery = () => {
             >
               {/* Outer frame styling */}
               <div className="absolute inset-0 border border-transparent group-hover:border-secondary/25 rounded-2xl transition-colors duration-500 z-10 pointer-events-none" />
-              
+
               {/* Main Image */}
               <div className="w-full h-full overflow-hidden relative">
-                <img 
-                  src={item.image} 
-                  alt={item.title} 
+                <img
+                  src={item.image}
+                  alt={item.title}
                   className="w-full h-full object-cover transition-transform duration-[1200ms] group-hover:scale-108 brightness-[0.85] group-hover:brightness-[0.9]"
                   loading="lazy"
                 />

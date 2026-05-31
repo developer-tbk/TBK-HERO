@@ -57,7 +57,7 @@ const AppContent = () => {
         <div className="absolute w-[400px] h-[400px] rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
         
         <div className="flex flex-col items-center gap-6 relative z-10 animate-pulse duration-1000">
-          <Logo className="w-20 h-20 text-primary drop-shadow-[0_0_20px_rgba(197,160,89,0.3)]" />
+          <Logo className="w-40 h-40 md:w-48 md:h-48 text-primary drop-shadow-[0_0_20px_rgba(197,160,89,0.3)]" />
           <div className="text-center space-y-1">
             <h2 className="font-headline text-2xl text-white font-semibold tracking-wide">The Bagara Kitchen</h2>
             <p className="text-[10px] text-secondary font-bold uppercase tracking-[0.2em] mt-1">Loading Royal Heritage...</p>

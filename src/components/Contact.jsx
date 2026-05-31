@@ -61,17 +61,22 @@ const Contact = () => {
               <h3 className="font-headline text-2xl text-white font-medium">The Bagara Kitchen</h3>
 
               <div className="space-y-5">
-                <div className="flex items-start gap-4 text-on-surface-variant group">
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contactInfo.address || 'The Bagara Kitchen')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-4 text-on-surface-variant group cursor-pointer hover:text-white transition-colors duration-300"
+                >
                   <div className="p-3 bg-surface border border-outline-variant/30 rounded-xl group-hover:border-secondary transition-colors duration-300 text-secondary">
                     <MapPin size={20} />
                   </div>
                   <div>
-                    <h4 className="text-white text-sm font-semibold uppercase tracking-wider">Location</h4>
+                    <h4 className="text-white text-sm font-semibold uppercase tracking-wider group-hover:text-secondary transition-colors duration-300">Location</h4>
                     <p className="text-sm font-light mt-1 leading-relaxed">
                       {contactInfo.address}
                     </p>
                   </div>
-                </div>
+                </a>
 
                 <div className="flex items-start gap-4 text-on-surface-variant group">
                   <div className="p-3 bg-surface border border-outline-variant/30 rounded-xl group-hover:border-secondary transition-colors duration-300 text-secondary">
@@ -163,7 +168,7 @@ const Contact = () => {
                   </div>
                   <h4 className="font-headline text-xl text-white font-semibold">Message Dispatched Successfully!</h4>
                   <p className="text-sm text-on-surface-variant font-light max-w-sm mx-auto leading-relaxed">
-                    Thank you for writing to us. We have received your query and will respond shortly. Aadab and have a wonderful day!
+                    Thank you for writing to us. We have received your query and will respond shortly. Have a wonderful day!
                   </p>
                 </motion.div>
               ) : (

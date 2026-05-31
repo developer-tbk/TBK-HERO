@@ -31,8 +31,11 @@ import {
   Check,
   X,
   FileImage,
-  Database
+  Database,
+  Menu as MenuIcon,
+  MessageSquare
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const ManagerDashboard = ({ onGoToPublic }) => {
   const { logout, user } = useAuth();
@@ -60,7 +63,10 @@ const ManagerDashboard = ({ onGoToPublic }) => {
     managerMenuEditingEnabled,
     managerGalleryEditingEnabled,
     managerSettingsEditingEnabled,
-    managerBookingsEditingEnabled
+    managerBookingsEditingEnabled,
+    messages,
+    deleteMessage,
+    updateMessageStatus
   } = useData();
 
   // Dynamic timezone-safe local date YYYY-MM-DD
@@ -71,6 +77,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
   const todayString = `${yyyy}-${mm}-${dd}`;
 
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'bookings', 'gallery', 'content', 'settings'
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [bookingFilter, setBookingFilter] = useState('upcoming');
   const [selectedDashboardMenuType, setSelectedDashboardMenuType] = useState('restaurant'); // 'restaurant' or 'banquet'
   const [managerSuccess, setManagerSuccess] = useState(false);
@@ -330,16 +337,170 @@ const ManagerDashboard = ({ onGoToPublic }) => {
   return (
     <div className="min-h-screen bg-[#001b16] text-[#e2e2e2] flex flex-col lg:flex-row font-body overflow-x-hidden">
       
+      {/* Mobile Top Header */}
+      <header className="lg:hidden bg-surface-low border-b border-outline-variant/35 py-4 px-6 flex justify-between items-center shadow-lg sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <Logo className="w-9 h-9 flex-shrink-0" />
+          <div className="flex flex-col">
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5 font-headline text-[14px] min-[360px]:text-base sm:text-lg text-white font-bold leading-tight">
+              <span>The Bagara Kitchen</span>
+              <span>and Bar</span>
+            </div>
+            <span className="text-[9px] text-secondary font-semibold uppercase tracking-wider block mt-1">Manager Portal</span>
+          </div>
+        </div>
+
+        {/* Mobile Hamburger Button */}
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="text-primary focus:outline-none p-1 transition-transform duration-200 active:scale-90 cursor-pointer"
+          aria-label="Toggle menu"
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
+        </button>
+      </header>
+
+      {/* Mobile Drawer Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Blurred Glassmorphic Backdrop for Click-Outside Dismissals */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-x-0 top-[70px] z-40 lg:hidden bg-[#001c16]/98 backdrop-blur-lg border-b border-outline-variant/30 py-6 px-6 flex flex-col gap-5 shadow-2xl shadow-black/80"
+            >
+              <nav className="flex flex-col gap-1.5">
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setIsEditing(false); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'dashboard'}
+                  className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'dashboard'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
+                  }`}
+                >
+                  <LayoutDashboard size={18} />
+                  Dashboard
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('bookings'); setIsEditing(false); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'bookings'}
+                  className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'bookings'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
+                  }`}
+                >
+                  <CalendarDays size={18} />
+                  Banquet Bookings
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('messages'); setIsEditing(false); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'messages'}
+                  className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'messages'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
+                  }`}
+                >
+                  <Mail size={18} />
+                  Guest Inquiries
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('gallery'); setIsEditing(false); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'gallery'}
+                  className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'gallery'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
+                  }`}
+                >
+                  <ImageIcon size={18} />
+                  Gallery Management
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('content'); setIsEditing(false); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'content'}
+                  className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'content'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
+                  }`}
+                >
+                  <UtensilsCrossed size={18} />
+                  Restaurant Content
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('settings'); setIsEditing(false); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'settings'}
+                  className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'settings'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
+                  }`}
+                >
+                  <SettingsIcon size={18} />
+                  Settings
+                </button>
+              </nav>
+
+              <div className="border-t border-outline-variant/20 pt-4 flex flex-col gap-3">
+                <div className="px-3 text-xs text-on-surface-variant/80">
+                  <p className="font-semibold text-white">Logged in as:</p>
+                  <p className="truncate mt-0.5">{user.name} ({user.email})</p>
+                </div>
+                <div className="flex flex-col gap-2 mt-2">
+                  <button 
+                    onClick={() => { onGoToPublic(); setIsMobileMenuOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 bg-surface hover:bg-surface-high border border-outline-variant/30 text-secondary hover:text-white rounded-xl text-xs font-semibold py-3 transition-all cursor-pointer duration-300"
+                  >
+                    <Store size={18} />
+                    View Public Site
+                  </button>
+                  <button 
+                    onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 bg-surface hover:bg-surface-high border border-outline-variant/30 hover:border-red-500/40 hover:text-red-400 rounded-xl text-xs font-semibold py-3 transition-all cursor-pointer duration-300"
+                  >
+                    <LogOut size={18} />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* SIDEBAR NAVIGATION PANEL (Requested Layout) */}
-      <aside className="w-full lg:w-72 bg-surface-low border-r lg:border-b-0 border-b border-outline-variant/30 flex flex-col justify-between flex-shrink-0 z-20">
+      <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-surface-low border-r lg:border-b-0 border-b border-outline-variant/30 justify-between flex-shrink-0 z-20">
         <div className="p-6 space-y-8">
           
           {/* Brand Logo and Title */}
           <div className="flex items-center gap-3 border-b border-outline-variant/20 pb-5">
-            <Logo className="w-10 h-10" />
-            <div>
-              <h2 className="font-headline text-lg text-white font-bold leading-tight">TBK Operations</h2>
-              <span className="text-[10px] text-secondary font-semibold uppercase tracking-wider block mt-0.5">Manager Portal</span>
+            <Logo className="w-10 h-10 flex-shrink-0" />
+            <div className="flex flex-col">
+              <div className="flex flex-col gap-0.5 font-headline text-lg text-white font-bold leading-tight">
+                <span>The Bagara Kitchen</span>
+                <span>and Bar</span>
+              </div>
+              <span className="text-[10px] text-secondary font-semibold uppercase tracking-wider block mt-2">Manager Portal</span>
             </div>
           </div>
 
@@ -347,10 +508,11 @@ const ManagerDashboard = ({ onGoToPublic }) => {
           <nav className="space-y-1.5">
             <button
               onClick={() => { setActiveTab('dashboard'); setIsEditing(false); }}
+              disabled={activeTab === 'dashboard'}
               className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'dashboard'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
               }`}
             >
               <LayoutDashboard size={18} />
@@ -359,10 +521,11 @@ const ManagerDashboard = ({ onGoToPublic }) => {
 
             <button
               onClick={() => { setActiveTab('bookings'); setIsEditing(false); }}
+              disabled={activeTab === 'bookings'}
               className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'bookings'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
               }`}
             >
               <CalendarDays size={18} />
@@ -370,11 +533,25 @@ const ManagerDashboard = ({ onGoToPublic }) => {
             </button>
 
             <button
+              onClick={() => { setActiveTab('messages'); setIsEditing(false); }}
+              disabled={activeTab === 'messages'}
+              className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                activeTab === 'messages'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
+              }`}
+            >
+              <Mail size={18} />
+              Guest Inquiries
+            </button>
+
+            <button
               onClick={() => { setActiveTab('gallery'); setIsEditing(false); }}
+              disabled={activeTab === 'gallery'}
               className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'gallery'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
               }`}
             >
               <ImageIcon size={18} />
@@ -383,10 +560,11 @@ const ManagerDashboard = ({ onGoToPublic }) => {
 
             <button
               onClick={() => { setActiveTab('content'); setIsEditing(false); }}
+              disabled={activeTab === 'content'}
               className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'content'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
               }`}
             >
               <UtensilsCrossed size={18} />
@@ -395,10 +573,11 @@ const ManagerDashboard = ({ onGoToPublic }) => {
 
             <button
               onClick={() => { setActiveTab('settings'); setIsEditing(false); }}
+              disabled={activeTab === 'settings'}
               className={`w-full flex items-center gap-3.5 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'settings'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface cursor-pointer'
               }`}
             >
               <SettingsIcon size={18} />
@@ -450,7 +629,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
             <div className="bg-surface border border-outline-variant/35 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-[60px] pointer-events-none" />
               <div className="space-y-2 relative z-10">
-                <span className="text-secondary text-xs font-bold uppercase tracking-wider">Aadab and Welcome,</span>
+                <span className="text-secondary text-xs font-bold uppercase tracking-wider">Welcome,</span>
                 <h2 className="font-headline text-3xl text-white font-bold">{user.name}</h2>
                 <p className="text-xs text-on-surface-variant font-light max-w-xl">
                   Manage banquet operations, add signature dishes, publish gallery showcases, and manage Swiggy integrations instantly.
@@ -465,7 +644,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
             </div>
 
             {/* Metrics cards grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               <div className="bg-surface border border-outline-variant/35 rounded-2xl p-5 shadow-xl flex items-center justify-between">
                 <div className="space-y-1">
@@ -478,16 +657,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                 </div>
               </div>
 
-              <div className="bg-surface border border-outline-variant/35 rounded-2xl p-5 shadow-xl flex items-center justify-between">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Menu Items</span>
-                  <span className="text-3xl font-bold text-white block">{menuItems.length}</span>
-                  <span className="text-[9px] text-on-surface-variant/75 font-light block mt-1">Categories: 4 groups</span>
-                </div>
-                <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl text-primary">
-                  <UtensilsCrossed size={24} />
-                </div>
-              </div>
+
 
               <div className="bg-surface border border-outline-variant/35 rounded-2xl p-5 shadow-xl flex items-center justify-between">
                 <div className="space-y-1">
@@ -684,7 +854,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                       )}
 
                       {/* Actions */}
-                      <div className="flex justify-end gap-2 border-t border-outline-variant/10 pt-3">
+                      <div className="flex flex-wrap justify-end gap-2 border-t border-outline-variant/10 pt-3 w-full">
                         {managerBookingsEditingEnabled && (
                           <button
                             onClick={() => {
@@ -767,7 +937,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                               }
                             }}
                             disabled={!managerBookingsEditingEnabled}
-                            className="bg-red-950/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400/90 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed ml-auto"
+                            className="bg-red-950/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400/90 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed sm:ml-auto ml-0"
                           >
                             <Trash2 size={12} /> Delete
                           </button>
@@ -779,6 +949,97 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {activeTab === 'messages' && (
+          // TAB 2b: Guest Inquiries Inbox
+          <div className="bg-surface border border-outline-variant/35 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+            <div className="border-b border-outline-variant/20 pb-4">
+              <h2 className="font-headline text-2xl text-white font-bold flex items-center gap-2">
+                <Mail className="text-secondary" /> Guest Inquiries Inbox
+              </h2>
+              <p className="text-xs text-on-surface-variant font-light mt-1">Direct feedback queries and banquet inquiries left on the contact form.</p>
+            </div>
+
+            {messages.length === 0 ? (
+              <div className="text-center py-16 text-on-surface-variant/60 font-light space-y-2 bg-surface-low/30 border border-outline-variant/10 rounded-xl">
+                <MessageSquare className="w-10 h-10 mx-auto text-outline-variant/50 animate-pulse" />
+                <p>Inbox is currently empty. No new guest messages.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {messages.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-4 shadow-sm hover:border-outline-variant/40 transition-colors"
+                  >
+                    {/* Header block with status badges */}
+                    <div className="flex justify-between items-start gap-4 border-b border-outline-variant/10 pb-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">{msg.name}</h3>
+                        <p className="text-xs text-primary font-light">{msg.email}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                          msg.status === 'Contacted'
+                            ? 'bg-emerald-950/40 border border-emerald-500/80 text-emerald-400'
+                            : 'bg-amber-950/40 border border-primary/80 text-primary'
+                        }`}>
+                          {msg.status || 'Pending'}
+                        </span>
+                        <span className="text-[10px] text-on-surface-variant font-light">
+                          {msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Just now'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-xs text-on-surface-variant leading-relaxed font-light font-sans py-1">
+                      "{msg.message}"
+                    </p>
+
+                    {/* Inquiry Actions */}
+                    <div className="flex justify-end gap-2 border-t border-outline-variant/10 pt-3 flex-wrap">
+                      <a
+                        href={`mailto:${msg.email}?subject=Regarding your Inquiry - The Bagara Kitchen and Bar`}
+                        className="bg-primary/15 border border-primary/40 hover:bg-primary hover:text-white text-primary font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
+                      >
+                        <Mail size={12} /> Send Email
+                      </a>
+
+                      {msg.status !== 'Contacted' && (
+                        <button
+                          onClick={() => updateMessageStatus(msg.id, 'Contacted')}
+                          className="bg-emerald-950/40 border border-emerald-500/50 hover:bg-emerald-500 hover:text-white text-emerald-400 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
+                        >
+                          <Check size={12} /> Mark Contacted
+                        </button>
+                      )}
+
+                      {msg.status === 'Contacted' && (
+                        <button
+                          onClick={() => updateMessageStatus(msg.id, 'Pending')}
+                          className="bg-amber-950/40 border border-primary/50 hover:bg-primary hover:text-white text-primary font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
+                        >
+                          <Clock size={12} /> Mark Pending
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete "${msg.name}'s" guest inquiry?`)) {
+                            deleteMessage(msg.id);
+                          }
+                        }}
+                        className="bg-red-950/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400/90 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1442,6 +1703,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                       <option value="Birthday Party">Birthday Party</option>
                       <option value="Family Celebration">Family Celebration</option>
                       <option value="Custom Event">Custom Event</option>
+                      <option value="Others">Others</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">

@@ -110,10 +110,22 @@ const BookingModal = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
 
     // Store banquet booking request in dynamic context
-    setTimeout(() => {
-      addBooking(formData);
-      setIsSubmitting(false);
-      setIsSubmitted(true);
+    setTimeout(async () => {
+      try {
+        await addBooking(formData);
+
+        // Send booking alerts (Admin details & Guest receipt confirmation) via secure server SMTP
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'new_booking', data: formData })
+        });
+      } catch (err) {
+        console.error('Failed to dispatch booking emails:', err);
+      } finally {
+        setIsSubmitting(false);
+        setIsSubmitted(true);
+      }
     }, 2000);
   };
 
@@ -193,7 +205,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                     Booking Request Sent!
                   </h4>
                   <p className="text-sm text-on-surface-variant font-light leading-relaxed max-w-sm mx-auto">
-                    Aadab! Thank you for choosing The Bagara Kitchen. Our premium events coordinator will reach out to you within 12 hours with details and custom menu templates.
+                    Thank you for choosing The Bagara Kitchen. Our premium events coordinator will reach out to you within 12 hours with details and custom menu templates.
                   </p>
                 </div>
 
@@ -247,6 +259,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                             <option>Birthday Celebration</option>
                             <option>Anniversary Dinner</option>
                             <option>Bespoke Family Banquet</option>
+                            <option>Others</option>
                           </select>
                         </div>
 

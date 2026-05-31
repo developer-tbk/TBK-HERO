@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ZoomIn, 
+import {
+  ZoomIn,
   ZoomOut,
-  Maximize2, 
-  Download, 
-  Sparkles, 
-  BookOpen, 
-  Utensils, 
+  Maximize2,
+  Download,
+  Sparkles,
+  BookOpen,
+  Utensils,
   ArrowRight,
   ExternalLink,
   X
@@ -17,7 +17,7 @@ import { useData } from '../context/DataContext';
 const Menu = () => {
   const { restaurantMenuImage, banquetVegMenuImage, banquetNonVegMenuImage, contactInfo } = useData();
   const [selectedMenuType, setSelectedMenuType] = useState('restaurant'); // 'restaurant' or 'banquet'
-  
+
   // Immersive Lightbox State
   const [lightboxImage, setLightboxImage] = useState(null); // original PDF or Image URL
   const [lightboxTitle, setLightboxTitle] = useState('');
@@ -64,25 +64,25 @@ const Menu = () => {
   // Bulletproof Direct-Download handler (bypasses new tabs/redirects entirely)
   const handleDownload = async (targetUrl, fileName = 'menu-card.pdf') => {
     if (!targetUrl) return;
-    
+
     // Automatically clean any accidental fl_attachment in the URL
     const cleanedUrl = cleanUrl(targetUrl);
     const isPdf = cleanedUrl.toLowerCase().split('?')[0].endsWith('.pdf');
-    
+
     if (isPdf) {
       // For PDFs, we open the clean, error-free PDF document in a new tab.
       // This lets the browser load it natively in Chrome PDF viewer where they can view/print/download it.
       window.open(cleanedUrl, '_blank');
       return;
     }
-    
+
     // For standard images, force download via fl_attachment parameter
     if (cleanedUrl.includes('res.cloudinary.com') && cleanedUrl.includes('/upload/')) {
       const downloadUrl = cleanedUrl.replace('/upload/', '/upload/fl_attachment/');
       window.open(downloadUrl, '_self');
       return;
     }
-    
+
     // Fallback for non-Cloudinary images: Blob fetch downloader
     try {
       const response = await fetch(cleanedUrl);
@@ -110,8 +110,8 @@ const Menu = () => {
   const isLightboxPdf = checkIsPdf(lightboxImage);
 
   return (
-    <section 
-      id="menu" 
+    <section
+      id="menu"
       className="py-24 px-6 md:px-8 bg-background relative overflow-hidden"
     >
       {/* Background Decorative Blobs */}
@@ -119,7 +119,7 @@ const Menu = () => {
       <div className="absolute bottom-1/4 right-[10%] w-96 h-96 bg-secondary/5 rounded-full blur-[100px] pointer-events-none animate-pulse duration-[8000ms]" />
 
       <div className="max-w-6xl mx-auto space-y-16 relative z-10">
-        
+
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <span className="font-label text-xs text-secondary font-bold uppercase tracking-[0.25em] flex items-center justify-center gap-2">
@@ -137,22 +137,20 @@ const Menu = () => {
         <div className="flex justify-center max-w-lg mx-auto p-1.5 bg-surface-low border border-outline-variant/30 rounded-2xl shadow-xl shadow-black/40">
           <button
             onClick={() => setSelectedMenuType('restaurant')}
-            className={`flex-1 py-3.5 px-6 rounded-xl text-xs md:text-sm font-semibold tracking-wide uppercase transition-all duration-500 cursor-pointer flex items-center justify-center gap-2 ${
-              selectedMenuType === 'restaurant'
-                ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02] font-bold border border-secondary/30'
-                : 'text-on-surface-variant hover:text-white'
-            }`}
+            className={`flex-1 py-3.5 px-6 rounded-xl text-xs md:text-sm font-semibold tracking-wide uppercase transition-all duration-500 cursor-pointer flex items-center justify-center gap-2 ${selectedMenuType === 'restaurant'
+              ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02] font-bold border border-secondary/30'
+              : 'text-on-surface-variant hover:text-white'
+              }`}
           >
             <Utensils size={14} className={selectedMenuType === 'restaurant' ? 'text-secondary' : 'opacity-70'} />
             Restaurant Menu
           </button>
           <button
             onClick={() => setSelectedMenuType('banquet')}
-            className={`flex-1 py-3.5 px-6 rounded-xl text-xs md:text-sm font-semibold tracking-wide uppercase transition-all duration-500 cursor-pointer flex items-center justify-center gap-2 ${
-              selectedMenuType === 'banquet'
-                ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02] font-bold border border-secondary/30'
-                : 'text-on-surface-variant hover:text-white'
-            }`}
+            className={`flex-1 py-3.5 px-6 rounded-xl text-xs md:text-sm font-semibold tracking-wide uppercase transition-all duration-500 cursor-pointer flex items-center justify-center gap-2 ${selectedMenuType === 'banquet'
+              ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02] font-bold border border-secondary/30'
+              : 'text-on-surface-variant hover:text-white'
+              }`}
           >
             <BookOpen size={14} className={selectedMenuType === 'banquet' ? 'text-secondary' : 'opacity-70'} />
             Banquet Packages
@@ -162,10 +160,10 @@ const Menu = () => {
         {/* Dynamic Menu Viewers */}
         <div className="w-full">
           {selectedMenuType === 'restaurant' ? (
-            
+
             // VIEW 1: RESTAURANT MENU (Single Full-Width Card)
             <div className="max-w-3xl mx-auto space-y-8">
-              
+
               <div className="bg-surface border-2 border-secondary/20 hover:border-secondary/40 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 relative group">
                 {/* Corner Accents */}
                 <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-secondary/40 pointer-events-none" />
@@ -175,16 +173,16 @@ const Menu = () => {
 
                 {/* Document Display */}
                 <div className="relative w-full bg-transparent flex items-center justify-center overflow-hidden">
-                  <img 
-                    src={getDisplayImageUrl(activeResImage || 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=1000&auto=format&fit=crop')} 
-                    alt="Restaurant Menu Card" 
+                  <img
+                    src={getDisplayImageUrl(activeResImage || 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=1000&auto=format&fit=crop')}
+                    alt="Restaurant Menu Card"
                     className="w-full h-auto select-none filter brightness-[0.97] transition-all duration-700 block animate-fadeIn"
                     loading="eager"
                     onError={(e) => {
                       e.target.src = 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=1000&auto=format&fit=crop';
                     }}
                   />
-                  
+
                   {checkIsPdf(activeResImage) && (
                     <div className="absolute top-6 left-6 z-20 flex flex-col gap-2 pointer-events-none select-none">
                       <span className="bg-primary/95 backdrop-blur border border-secondary text-white text-[10px] font-bold uppercase tracking-[0.15em] px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2 max-w-max">
@@ -195,11 +193,11 @@ const Menu = () => {
                   )}
 
                   {/* Expand Overlay */}
-                  <div 
-                    onClick={() => { 
-                      setLightboxImage(activeResImage || 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=1000&auto=format&fit=crop'); 
+                  <div
+                    onClick={() => {
+                      setLightboxImage(activeResImage || 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=1000&auto=format&fit=crop');
                       setLightboxTitle("Restaurant Menu Card");
-                      resetZoom(); 
+                      resetZoom();
                     }}
                     className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 cursor-pointer"
                   >
@@ -216,15 +214,15 @@ const Menu = () => {
                 <div className="bg-surface-low border-t border-outline-variant/30 p-4 md:p-6 flex flex-wrap gap-4 items-center justify-between">
                   <div className="text-xs text-on-surface-variant flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-                    <span>Official Restaurant A la Carte Menu</span>
+                    <span>Official Restaurant Menu</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => { 
-                        setLightboxImage(activeResImage || 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=1000&auto=format&fit=crop'); 
+                      onClick={() => {
+                        setLightboxImage(activeResImage || 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=1000&auto=format&fit=crop');
                         setLightboxTitle("Restaurant Menu Card");
-                        resetZoom(); 
+                        resetZoom();
                       }}
                       className="bg-surface hover:bg-surface-high border border-outline-variant/40 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 hover:scale-105 transition-all cursor-pointer duration-300"
                     >
@@ -243,43 +241,42 @@ const Menu = () => {
 
               <div className="text-center pt-4 space-y-4">
                 <p className="text-xs font-label text-on-surface-variant uppercase tracking-wider">
-                  Craving our Nizami delicacies? Order online now:
+                  Craving our Bagara Kitchen Delicacies? Order online now:
                 </p>
                 <div className="flex justify-center gap-5 items-center flex-wrap">
-                  <a 
-                    href={contactInfo.swiggy || 'https://swiggy.com'} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
+                  <a
+                    href={contactInfo.swiggy || 'https://swiggy.com'}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="bg-[#FF5200] hover:bg-[#E04800] text-white px-7 py-3 rounded-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-xs font-bold shadow-md shadow-[#FF5200]/15"
                   >
-                    <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="24" height="24" rx="5" fill="#FF5200"/>
-                      <path d="M12.43 5.48c.36 0 .7.1.98.28.28.18.49.44.62.74.13.3.17.64.12.98a1.98 1.98 0 0 1-.58 1.25l-.83.83-.02.02a.88.88 0 0 0-.25.62v2.24c0 .35-.14.68-.38.93a1.3 1.3 0 0 1-.92.38c-.35 0-.68-.14-.93-.38a1.3 1.3 0 0 1-.38-.92v-2.24c0-.35.14-.68.38-.93l.83-.83c.25-.25.38-.58.38-.93 0-.35-.14-.68-.38-.93a1.3 1.3 0 0 1-.38-.92c0-.35.14-.68.38-.93l.01-.01c.25-.25.58-.38.92-.38zm-.9 2.51c.31.06.63.1.95.1 1.48 0 2.8-.7 3.65-1.78l.02-.02.02-.02c.48-.61.76-1.38.76-2.21 0-.9-.33-1.75-.9-2.42l.23-.23.01-.01c.21-.21.21-.55 0-.76a.54.54 0 0 0-.76 0l-.23.23a4.67 4.67 0 0 0-2.93-1.04c-1.29 0-2.45.52-3.3 1.36h-.01c-.9.9-1.4 2.14-1.4 3.42 0 .83.22 1.6.61 2.27l.02.02-.01.01-.21.21a.54.54 0 0 0 0 .76c.21.21.55.21.76 0l.21-.21c.64.44.72 2.22.77l.01.02.08.01zm.9 3.51c.64 0 1.25.17 1.8.46l.03.02.04.03c.89.54 1.43 1.5 1.43 2.53 0 .92-.37 1.76-.98 2.37l-.02.02a3.34 3.34 0 0 1-2.37.98c-1.95 0-3.52-1.57-3.52-3.52 0-.26.03-.52.09-.76l-.01-.04a3.52 3.52 0 0 1 3.52-3.12z" fill="white"/>
+                    <svg className="w-5 h-5 flex-shrink-0 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12.034 24c-.376-.411-2.075-2.584-3.95-5.513-.547-.916-.901-1.63-.833-1.814.178-.48 3.355-.743 4.333-.308.298.132.29.307.29.409 0 .44-.022 1.619-.022 1.619a.441.441 0 1 0 .883-.002l-.005-2.939c0-.255-.278-.319-.331-.329-.511-.002-1.548-.006-2.661-.006-2.457 0-3.006.101-3.423-.172-.904-.591-2.383-4.577-2.417-6.819C3.849 4.964 5.723 2.225 8.362.868A8.13 8.13 0 0 1 12.026 0c4.177 0 7.617 3.153 8.075 7.209l.001.011c.084.981-5.321 1.189-6.39.904-.164-.044-.206-.212-.206-.284L13.5 4.996a.442.442 0 0 0-.884.002l.009 3.866a.33.33 0 0 0 .268.32l3.354-.001c1.79 0 2.542.207 3.042.588.333.254.461.739.349 1.37C18.633 16.755 12.273 23.71 12.034 24z"/>
                     </svg>
-                    Order via Swiggy
+                    Order on Swiggy
                   </a>
-                  <a 
-                    href={contactInfo.zomato || 'https://zomato.com'} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
+                  <a
+                    href={contactInfo.zomato || 'https://zomato.com'}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="bg-[#CB202D] hover:bg-[#B01C27] text-white px-7 py-3 rounded-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-xs font-bold shadow-md shadow-[#CB202D]/15"
                   >
                     <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                     </svg>
-                    Order via Zomato
+                    Order on Zomato
                   </a>
                 </div>
               </div>
 
             </div>
           ) : (
-            
+
             // VIEW 2: BANQUET MENUS (Split Veg and Non-Veg Side-by-Side Cards)
             <div className="max-w-5xl mx-auto space-y-12">
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                
+
                 {/* 2A: VEGETARIAN BANQUET CARD */}
                 <div className="bg-surface border-2 border-emerald-500/10 hover:border-emerald-500/30 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 flex flex-col justify-between group relative">
                   {/* Corner Accent details - Emerald green motif */}
@@ -305,22 +302,22 @@ const Menu = () => {
 
                     {/* Image Document viewer */}
                     <div className="relative w-full bg-transparent flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={getDisplayImageUrl(activeVegImage || 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=1000&auto=format&fit=crop')} 
-                        alt="Vegetarian Banquet Menu" 
+                      <img
+                        src={getDisplayImageUrl(activeVegImage || 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=1000&auto=format&fit=crop')}
+                        alt="Vegetarian Banquet Menu"
                         className="w-full h-auto select-none filter brightness-[0.97] transition-all duration-700 block animate-fadeIn"
                         loading="eager"
                         onError={(e) => {
                           e.target.src = 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=1000&auto=format&fit=crop';
                         }}
                       />
-                      
+
                       {/* Expand Overlay */}
-                      <div 
-                        onClick={() => { 
-                          setLightboxImage(activeVegImage || 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=1000&auto=format&fit=crop'); 
+                      <div
+                        onClick={() => {
+                          setLightboxImage(activeVegImage || 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=1000&auto=format&fit=crop');
                           setLightboxTitle("Vegetarian Banquet Menu");
-                          resetZoom(); 
+                          resetZoom();
                         }}
                         className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 cursor-pointer"
                       >
@@ -342,10 +339,10 @@ const Menu = () => {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { 
-                          setLightboxImage(activeVegImage || 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=1000&auto=format&fit=crop'); 
+                        onClick={() => {
+                          setLightboxImage(activeVegImage || 'https://images.unsplash.com/photo-1541832676-9b763b0239ab?q=80&w=1000&auto=format&fit=crop');
                           setLightboxTitle("Vegetarian Banquet Menu");
-                          resetZoom(); 
+                          resetZoom();
                         }}
                         className="p-2 bg-surface hover:bg-surface-high border border-outline-variant/35 rounded-lg text-on-surface-variant hover:text-white transition-all cursor-pointer"
                         title="Expand View"
@@ -379,7 +376,7 @@ const Menu = () => {
                           <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm" />
                           Non-Vegetarian Banquet
                         </h3>
-                        <p className="text-[10px] text-on-surface-variant font-light mt-0.5">Royal Nizami Feasts</p>
+                        <p className="text-[10px] text-on-surface-variant font-light mt-0.5">Royal Hyderabadi Feasts</p>
                       </div>
                       {checkIsPdf(activeNonVegImage) && (
                         <span className="bg-rose-950/80 border border-rose-500/40 text-rose-400 text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">PDF</span>
@@ -388,22 +385,22 @@ const Menu = () => {
 
                     {/* Image Document viewer */}
                     <div className="relative w-full bg-transparent flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={getDisplayImageUrl(activeNonVegImage || 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1000&auto=format&fit=crop')} 
-                        alt="Non-Vegetarian Banquet Menu" 
+                      <img
+                        src={getDisplayImageUrl(activeNonVegImage || 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1000&auto=format&fit=crop')}
+                        alt="Non-Vegetarian Banquet Menu"
                         className="w-full h-auto select-none filter brightness-[0.97] transition-all duration-700 block animate-fadeIn"
                         loading="eager"
                         onError={(e) => {
                           e.target.src = 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1000&auto=format&fit=crop';
                         }}
                       />
-                      
+
                       {/* Expand Overlay */}
-                      <div 
-                        onClick={() => { 
-                          setLightboxImage(activeNonVegImage || 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1000&auto=format&fit=crop'); 
+                      <div
+                        onClick={() => {
+                          setLightboxImage(activeNonVegImage || 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1000&auto=format&fit=crop');
                           setLightboxTitle("Non-Vegetarian Banquet Menu");
-                          resetZoom(); 
+                          resetZoom();
                         }}
                         className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 cursor-pointer"
                       >
@@ -425,10 +422,10 @@ const Menu = () => {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { 
-                          setLightboxImage(activeNonVegImage || 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1000&auto=format&fit=crop'); 
+                        onClick={() => {
+                          setLightboxImage(activeNonVegImage || 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1000&auto=format&fit=crop');
                           setLightboxTitle("Non-Vegetarian Banquet Menu");
-                          resetZoom(); 
+                          resetZoom();
                         }}
                         className="p-2 bg-surface hover:bg-surface-high border border-outline-variant/35 rounded-lg text-on-surface-variant hover:text-white transition-all cursor-pointer"
                         title="Expand View"
@@ -453,7 +450,7 @@ const Menu = () => {
                 <p className="text-xs font-label text-on-surface-variant uppercase tracking-wider">
                   Organizing a grand celebration or corporate feast?
                 </p>
-                <a 
+                <a
                   href="#contact"
                   onClick={(e) => {
                     e.preventDefault();
@@ -480,7 +477,7 @@ const Menu = () => {
       {/* FULLSCREEN IMMERSIVE LIGHTBOX EXPLORER (With Interactive Zoom Controls) */}
       <AnimatePresence>
         {lightboxImage && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -504,7 +501,7 @@ const Menu = () => {
                 >
                   <ZoomOut size={16} className="text-white" />
                 </button>
-                
+
                 <span className="text-xs font-mono select-none w-10 text-center text-on-surface-variant font-bold">
                   {Math.round(zoomScale * 100)}%
                 </span>
@@ -556,9 +553,9 @@ const Menu = () => {
                 className="max-h-full max-w-full flex items-center justify-center relative"
                 style={{ transform: `scale(${zoomScale})`, transformOrigin: 'center center', transition: 'transform 0.15s ease-out' }}
               >
-                <img 
-                  src={getDisplayImageUrl(lightboxImage)} 
-                  alt="Expanded Menu card document" 
+                <img
+                  src={getDisplayImageUrl(lightboxImage)}
+                  alt="Expanded Menu card document"
                   className="max-h-[75vh] max-w-[90vw] object-contain shadow-2xl select-none"
                   onError={(e) => {
                     // Fail-safe fallback in lightbox
@@ -572,7 +569,7 @@ const Menu = () => {
                   }}
                 />
               </motion.div>
-              
+
               {/* Direct Full-Screen PDF link inside Lightbox */}
               {isLightboxPdf && (
                 <div className="mt-6 z-10">

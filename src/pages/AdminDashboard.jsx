@@ -22,10 +22,12 @@ import {
   Database,
   Users,
   UserPlus,
-  Loader2
+  Loader2,
+  Menu as MenuIcon
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../firebase';
-import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { getApps, initializeApp, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 
@@ -38,6 +40,8 @@ const AdminDashboard = ({ onGoToPublic }) => {
     cloudinarySettings, 
     updateBookingStatus, 
     deleteBooking,
+    deleteMessage,
+    updateMessageStatus,
     updateCloudinarySettings,
     managerMenuEditingEnabled,
     managerGalleryEditingEnabled,
@@ -50,6 +54,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
   } = useData();
 
   const [activeTab, setActiveTab] = useState('bookings');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [bookingFilter, setBookingFilter] = useState('upcoming');
   
   // Cloudinary Settings Form State
@@ -63,37 +68,35 @@ const AdminDashboard = ({ onGoToPublic }) => {
   const [managerName, setManagerName] = useState('');
   const [managerEmail, setManagerEmail] = useState('');
   const [managerPassword, setManagerPassword] = useState('');
+  const [managerRole, setManagerRole] = useState('manager');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState(null);
   const [createSuccess, setCreateSuccess] = useState(false);
 
-  // Dynamic list loader
+  // Dynamic list loader with real-time updates
   useEffect(() => {
-    const fetchManagers = async () => {
+    if (isFirebaseConfigured && db) {
       setLoadingManagers(true);
-      if (isFirebaseConfigured && db) {
+      const unsubscribe = onSnapshot(collection(db, 'managers'), (snapshot) => {
+        const list = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data());
+        });
+        setManagers(list);
+        setLoadingManagers(false);
+      }, (e) => {
+        console.error("Error loading managers in real-time from Firestore:", e);
+        setLoadingManagers(false);
+      });
+      return () => unsubscribe();
+    } else {
+      const saved = localStorage.getItem('tbk_managers');
+      if (saved) {
         try {
-          const querySnapshot = await getDocs(collection(db, 'managers'));
-          const list = [];
-          querySnapshot.forEach((doc) => {
-            list.push(doc.data());
-          });
-          setManagers(list);
-        } catch (e) {
-          console.error("Error loading managers from Firestore:", e);
-        }
-      } else {
-        const saved = localStorage.getItem('tbk_managers');
-        if (saved) {
-          try {
-            setManagers(JSON.parse(saved));
-          } catch(e){}
-        }
+          setManagers(JSON.parse(saved));
+        } catch(e){}
       }
-      setLoadingManagers(false);
-    };
-
-    fetchManagers();
+    }
   }, [isFirebaseConfigured]);
 
   const handleCreateManager = async (e) => {
@@ -114,7 +117,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
     const emailClean = managerEmail.toLowerCase().trim();
 
     if (managers.some(m => m.email.toLowerCase().trim() === emailClean)) {
-      setCreateError('A manager with this email already exists.');
+      setCreateError('An account with this email already exists.');
       setCreateLoading(false);
       return;
     }
@@ -138,23 +141,32 @@ const AdminDashboard = ({ onGoToPublic }) => {
         }
 
         const secondaryAuth = getAuth(secondaryApp);
-        await createUserWithEmailAndPassword(secondaryAuth, emailClean, managerPassword);
-        await firebaseSignOut(secondaryAuth);
+        try {
+          await createUserWithEmailAndPassword(secondaryAuth, emailClean, managerPassword);
+          await firebaseSignOut(secondaryAuth);
+        } catch (authErr) {
+          // If the auth profile already exists (e.g. it was deleted from Firestore but remains in Auth),
+          // we can catch the error and proceed to restore the Firestore document registry.
+          if (authErr.code === 'auth/email-already-in-use') {
+            console.log('Firebase Auth credentials already exist for this user. Restoring Firestore registry document.');
+          } else {
+            throw authErr;
+          }
+        }
 
         const newManager = {
           name: managerName,
           email: emailClean,
-          role: 'manager',
+          role: managerRole,
           createdAt: new Date().toISOString()
         };
         await setDoc(doc(db, 'managers', emailClean), newManager);
-        setManagers(prev => [...prev, newManager]);
       } else {
         const newManager = {
           name: managerName,
           email: emailClean,
           password: managerPassword,
-          role: 'manager',
+          role: managerRole,
           createdAt: new Date().toISOString()
         };
 
@@ -167,17 +179,21 @@ const AdminDashboard = ({ onGoToPublic }) => {
       setManagerName('');
       setManagerEmail('');
       setManagerPassword('');
+      setManagerRole('manager');
       setTimeout(() => setCreateSuccess(false), 3000);
     } catch (err) {
-      console.error('Error creating manager account:', err);
-      setCreateError(err.message || 'Failed to create manager account. Please try again.');
+      console.error('Error creating account:', err);
+      setCreateError(err.message || 'Failed to create account. Please try again.');
     } finally {
       setCreateLoading(false);
     }
   };
 
   const handleDeleteManager = async (email) => {
-    if (!window.confirm(`Are you sure you want to delete the manager account for "${email}"?`)) {
+    const account = managers.find(m => m.email.toLowerCase().trim() === email.toLowerCase().trim());
+    const roleLabel = account ? (account.role === 'admin' ? 'Administrator' : 'Manager') : 'staff';
+
+    if (!window.confirm(`Are you sure you want to delete the ${roleLabel} account for "${email}"?`)) {
       return;
     }
 
@@ -186,14 +202,14 @@ const AdminDashboard = ({ onGoToPublic }) => {
     try {
       if (isFirebaseConfigured && db) {
         await deleteDoc(doc(db, 'managers', emailClean));
+      } else {
+        const updatedList = managers.filter(m => m.email.toLowerCase().trim() !== emailClean);
+        localStorage.setItem('tbk_managers', JSON.stringify(updatedList));
+        setManagers(updatedList);
       }
-      
-      const updatedList = managers.filter(m => m.email.toLowerCase().trim() !== emailClean);
-      localStorage.setItem('tbk_managers', JSON.stringify(updatedList));
-      setManagers(updatedList);
     } catch (err) {
-      console.error('Error deleting manager role:', err);
-      alert('Failed to delete manager role. Please try again.');
+      console.error('Error deleting account:', err);
+      alert('Failed to delete account. Please try again.');
     }
   };
 
@@ -224,17 +240,21 @@ const AdminDashboard = ({ onGoToPublic }) => {
       {/* Upper Dashboard Header */}
       <header className="bg-surface-low border-b border-outline-variant/35 py-4 px-6 md:px-8 flex justify-between items-center shadow-lg sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <Logo className="w-9 h-9" />
-          <div>
-            <h1 className="font-headline text-lg md:text-xl text-white font-bold leading-none">TBK Admin Console</h1>
-            <span className="text-[10px] text-on-surface-variant/80 font-light mt-0.5 block flex items-center gap-1">
-              <Shield size={10} className="text-secondary" /> Administrative Level Access
+          <Logo className="w-9 h-9 flex-shrink-0" />
+          <div className="flex flex-col">
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5 font-headline text-[14px] min-[360px]:text-base sm:text-lg text-white font-bold leading-tight">
+              <span>The Bagara Kitchen</span>
+              <span>and Bar</span>
+            </div>
+            <span className="text-[9px] text-on-surface-variant/80 font-light mt-1 flex items-center gap-1">
+              <Shield size={9} className="text-secondary" /> Admin Console
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:block text-right">
+        {/* Desktop actions */}
+        <div className="hidden lg:flex items-center gap-4">
+          <div className="text-right">
             <p className="text-sm font-semibold text-white">{user.name}</p>
             <p className="text-[10px] text-on-surface-variant font-light">{user.email}</p>
           </div>
@@ -252,7 +272,133 @@ const AdminDashboard = ({ onGoToPublic }) => {
             Logout
           </button>
         </div>
+
+        {/* Mobile Hamburger Toggle */}
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="lg:hidden text-primary focus:outline-none p-1 transition-transform duration-200 active:scale-90 cursor-pointer"
+          aria-label="Toggle menu"
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
+        </button>
       </header>
+
+      {/* Mobile Drawer Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Blurred Glassmorphic Backdrop for Click-Outside Dismissals */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-x-0 top-[70px] z-40 lg:hidden bg-[#001c16]/98 backdrop-blur-lg border-b border-outline-variant/30 py-6 px-6 flex flex-col gap-5 shadow-2xl shadow-black/80"
+            >
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-3 mb-1">Systems Controls</p>
+                
+                <button
+                  onClick={() => { setActiveTab('bookings'); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'bookings'}
+                  className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'bookings'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
+                  }`}
+                >
+                  <CalendarDays size={16} />
+                  Event Planners
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('messages'); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'messages'}
+                  className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'messages'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
+                  }`}
+                >
+                  <Mail size={16} />
+                  Guest Inquiries
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('cloudinary'); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'cloudinary'}
+                  className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'cloudinary'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
+                  }`}
+                >
+                  <Settings size={16} />
+                  API Integrations
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('permissions'); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'permissions'}
+                  className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'permissions'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
+                  }`}
+                >
+                  <Shield size={16} />
+                  Operations Controls
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('staff'); setIsMobileMenuOpen(false); }}
+                  disabled={activeTab === 'staff'}
+                  className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
+                    activeTab === 'staff'
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                      : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
+                  }`}
+                >
+                  <Users size={16} />
+                  Manage Staff
+                </button>
+              </div>
+
+              {/* Mobile Drawer Actions & Info */}
+              <div className="border-t border-outline-variant/20 pt-4 flex flex-col gap-3">
+                <div className="px-3 text-xs text-on-surface-variant/80">
+                  <p className="font-semibold text-white">Logged in as:</p>
+                  <p className="truncate mt-0.5">{user.name} ({user.email})</p>
+                </div>
+                <div className="flex gap-2 w-full mt-2">
+                  <button 
+                    onClick={() => { onGoToPublic(); setIsMobileMenuOpen(false); }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-surface hover:bg-surface-high border border-outline-variant/30 text-secondary hover:text-white rounded-xl text-xs font-semibold py-3 transition-all cursor-pointer duration-300"
+                  >
+                    View Live Site
+                  </button>
+                  <button 
+                    onClick={() => { logout(); setIsMobileMenuOpen(false); }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-surface hover:bg-surface-high border border-outline-variant/30 hover:border-red-500/40 hover:text-red-400 rounded-xl text-xs font-semibold py-3 transition-all cursor-pointer duration-300"
+                  >
+                    <LogOut size={14} />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main Core Dashboard Layout */}
       <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-8 max-w-7xl mx-auto w-full">
@@ -261,15 +407,16 @@ const AdminDashboard = ({ onGoToPublic }) => {
         <div className="lg:col-span-3 space-y-6">
           
           {/* Active Navigation Tabs */}
-          <div className="bg-surface border border-outline-variant/35 rounded-2xl p-4 shadow-xl space-y-1">
+          <div className="hidden lg:block bg-surface border border-outline-variant/35 rounded-2xl p-4 shadow-xl space-y-1">
             <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-3 mb-2">Systems Controls</p>
             
             <button
               onClick={() => setActiveTab('bookings')}
+              disabled={activeTab === 'bookings'}
               className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'bookings'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
               }`}
             >
               <CalendarDays size={16} />
@@ -278,10 +425,11 @@ const AdminDashboard = ({ onGoToPublic }) => {
 
             <button
               onClick={() => setActiveTab('messages')}
+              disabled={activeTab === 'messages'}
               className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'messages'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
               }`}
             >
               <Mail size={16} />
@@ -290,10 +438,11 @@ const AdminDashboard = ({ onGoToPublic }) => {
 
             <button
               onClick={() => setActiveTab('cloudinary')}
+              disabled={activeTab === 'cloudinary'}
               className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'cloudinary'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
               }`}
             >
               <Settings size={16} />
@@ -302,10 +451,11 @@ const AdminDashboard = ({ onGoToPublic }) => {
 
             <button
               onClick={() => setActiveTab('permissions')}
+              disabled={activeTab === 'permissions'}
               className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'permissions'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
               }`}
             >
               <Shield size={16} />
@@ -314,10 +464,11 @@ const AdminDashboard = ({ onGoToPublic }) => {
 
             <button
               onClick={() => setActiveTab('staff')}
+              disabled={activeTab === 'staff'}
               className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold tracking-wide transition-all ${
                 activeTab === 'staff'
-                  ? 'bg-primary text-white shadow-lg shadow-primary/10'
-                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/10 cursor-default'
+                  : 'text-on-surface-variant hover:text-white hover:bg-surface-low cursor-pointer'
               }`}
             >
               <Users size={16} />
@@ -332,12 +483,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
             </p>
 
             <div className="grid grid-cols-1 gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
-                  <Layers size={14} className="text-primary" /> Menu items
-                </div>
-                <span className="text-sm font-bold text-white bg-surface-low border border-outline-variant/30 px-2.5 py-0.5 rounded-full">{menuItems.length}</span>
-              </div>
+
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">
@@ -486,7 +632,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
                         )}
 
                         {/* Actions */}
-                        <div className="flex justify-end gap-2 border-t border-outline-variant/10 pt-3">
+                        <div className="flex flex-wrap justify-end gap-2 border-t border-outline-variant/10 pt-3 w-full">
                           {booking.status !== 'Approved' && (
                             <button
                               onClick={() => updateBookingStatus(booking.id, 'Approved')}
@@ -525,7 +671,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
                                 deleteBooking(booking.id);
                               }
                             }}
-                            className="bg-red-950/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400/90 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300 ml-auto"
+                            className="bg-red-950/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400/90 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition-all duration-300 sm:ml-auto ml-0"
                           >
                             <Trash2 size={12} /> Delete
                           </button>
@@ -559,21 +705,70 @@ const AdminDashboard = ({ onGoToPublic }) => {
                   {messages.map((msg) => (
                     <div 
                       key={msg.id}
-                      className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-3 shadow-sm hover:border-outline-variant/40 transition-colors"
+                      className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-4 shadow-sm hover:border-outline-variant/40 transition-colors"
                     >
-                      <div className="flex justify-between items-start gap-4 border-b border-outline-variant/10 pb-2">
+                      {/* Header block with status badges */}
+                      <div className="flex justify-between items-start gap-4 border-b border-outline-variant/10 pb-3">
                         <div>
                           <h3 className="text-sm font-semibold text-white">{msg.name}</h3>
                           <p className="text-xs text-primary font-light">{msg.email}</p>
                         </div>
-                        <span className="text-[10px] text-on-surface-variant font-light">
-                          {new Date(msg.timestamp).toLocaleString()}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            msg.status === 'Contacted'
+                              ? 'bg-emerald-950/40 border border-emerald-500/80 text-emerald-400'
+                              : 'bg-amber-950/40 border border-primary/80 text-primary'
+                          }`}>
+                            {msg.status || 'Pending'}
+                          </span>
+                          <span className="text-[10px] text-on-surface-variant font-light">
+                            {msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Just now'}
+                          </span>
+                        </div>
                       </div>
                       
                       <p className="text-xs text-on-surface-variant leading-relaxed font-light font-sans py-1">
                         "{msg.message}"
                       </p>
+
+                      {/* Inquiry Actions */}
+                      <div className="flex justify-end gap-2 border-t border-outline-variant/10 pt-3 flex-wrap">
+                        <a
+                          href={`mailto:${msg.email}?subject=Regarding your Inquiry - The Bagara Kitchen and Bar`}
+                          className="bg-primary/15 border border-primary/40 hover:bg-primary hover:text-white text-primary font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
+                        >
+                          <Mail size={12} /> Send Email
+                        </a>
+
+                        {msg.status !== 'Contacted' && (
+                          <button
+                            onClick={() => updateMessageStatus(msg.id, 'Contacted')}
+                            className="bg-emerald-950/40 border border-emerald-500/50 hover:bg-emerald-500 hover:text-white text-emerald-400 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
+                          >
+                            <Check size={12} /> Mark Contacted
+                          </button>
+                        )}
+
+                        {msg.status === 'Contacted' && (
+                          <button
+                            onClick={() => updateMessageStatus(msg.id, 'Pending')}
+                            className="bg-amber-950/40 border border-primary/50 hover:bg-primary hover:text-white text-primary font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
+                          >
+                            <Clock size={12} /> Mark Pending
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete "${msg.name}'s" guest inquiry?`)) {
+                              deleteMessage(msg.id);
+                            }
+                          }}
+                          className="bg-red-950/10 border border-red-500/30 hover:bg-red-500 hover:text-white text-red-400/90 font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -763,11 +958,11 @@ const AdminDashboard = ({ onGoToPublic }) => {
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                 
-                {/* Form to Create Manager */}
+                {/* Form to Create Account (Manager / Admin) */}
                 <div className="md:col-span-5 space-y-4">
                   <div className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-4 shadow-md">
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2 border-b border-outline-variant/15 pb-2">
-                      <UserPlus size={16} className="text-secondary" /> Add Manager Profile
+                      <UserPlus size={16} className="text-secondary" /> Add Account Profile
                     </h3>
 
                     {createError && (
@@ -780,13 +975,13 @@ const AdminDashboard = ({ onGoToPublic }) => {
                     {createSuccess && (
                       <div className="p-3 bg-emerald-950/40 border border-emerald-500/50 text-emerald-400 rounded-lg text-[11px] flex items-center gap-2">
                         <Check size={14} className="flex-shrink-0" />
-                        <span>Manager credentials registered successfully.</span>
+                        <span>Account credentials registered successfully.</span>
                       </div>
                     )}
 
                     <form onSubmit={handleCreateManager} className="space-y-4">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Manager Full Name</label>
+                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Account Full Name</label>
                         <input 
                           type="text"
                           required
@@ -824,6 +1019,19 @@ const AdminDashboard = ({ onGoToPublic }) => {
                         />
                       </div>
 
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Account Role</label>
+                        <select
+                          value={managerRole}
+                          onChange={(e) => setManagerRole(e.target.value)}
+                          disabled={createLoading}
+                          className="w-full bg-background border border-outline-variant/60 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-primary transition-all cursor-pointer font-sans"
+                        >
+                          <option value="manager" className="bg-[#001c16] text-[#e2e2e2]">Operations Manager</option>
+                          <option value="admin" className="bg-[#001c16] text-[#e2e2e2]">Co-Administrator</option>
+                        </select>
+                      </div>
+
                       <button 
                         type="submit"
                         disabled={createLoading}
@@ -837,7 +1045,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
                         ) : (
                           <>
                             <UserPlus size={12} />
-                            Save Staff Credentials
+                            Save Credentials
                           </>
                         )}
                       </button>
@@ -850,7 +1058,17 @@ const AdminDashboard = ({ onGoToPublic }) => {
                   <div className="bg-surface-low border border-outline-variant/20 rounded-xl p-5 space-y-4 min-h-[300px] flex flex-col shadow-md">
                     <h3 className="text-sm font-semibold text-white flex items-center justify-between border-b border-outline-variant/15 pb-2">
                       <span className="flex items-center gap-2"><Users size={16} className="text-secondary" /> Active Registry</span>
-                      <span className="text-[10px] text-on-surface-variant font-light font-sans bg-background border border-outline-variant/30 px-2 py-0.5 rounded-full">{managers.length} accounts</span>
+                      <span className="text-[10px] text-on-surface-variant font-light font-sans bg-background border border-outline-variant/30 px-2 py-0.5 rounded-full">
+                        {(() => {
+                          const seen = new Set();
+                          return managers.filter(m => {
+                            const email = m.email?.toLowerCase().trim();
+                            if (!email || seen.has(email)) return false;
+                            seen.add(email);
+                            return true;
+                          }).length;
+                        })()} accounts
+                      </span>
                     </h3>
 
                     {loadingManagers ? (
@@ -861,33 +1079,54 @@ const AdminDashboard = ({ onGoToPublic }) => {
                     ) : managers.length === 0 ? (
                       <div className="flex-grow flex flex-col items-center justify-center text-center text-on-surface-variant/60 text-xs font-light space-y-2 py-12">
                         <Users className="w-8 h-8 text-outline-variant/40" />
-                        <p>No Operations Managers registered in the live database.</p>
+                        <p>No custom manager or admin accounts registered in the database.</p>
                       </div>
                     ) : (
                       <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                        {managers.map((manager, idx) => (
-                          <div 
-                            key={manager.email || idx}
-                            className="p-3.5 bg-background border border-outline-variant/20 hover:border-outline-variant/45 rounded-lg flex items-center justify-between gap-4 transition-all"
-                          >
-                            <div className="min-w-0">
-                              <h4 className="text-xs font-bold text-white truncate">{manager.name}</h4>
-                              <p className="text-[10px] text-primary font-medium truncate mt-0.5">{manager.email}</p>
-                              {manager.createdAt && (
-                                <p className="text-[8px] text-on-surface-variant/70 italic mt-0.5">
-                                  Created: {new Date(manager.createdAt).toLocaleDateString()}
-                                </p>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => handleDeleteManager(manager.email)}
-                              className="p-2 bg-red-950/10 border border-red-500/20 hover:border-red-500 hover:bg-red-500 hover:text-white text-red-400 rounded-md transition-all duration-300 cursor-pointer flex-shrink-0"
-                              title="Delete manager role"
+                        {(() => {
+                          const seenEmails = new Set();
+                          const uniqueManagers = managers.filter(m => {
+                            const emailLower = m.email?.toLowerCase().trim();
+                            if (!emailLower || seenEmails.has(emailLower)) return false;
+                            seenEmails.add(emailLower);
+                            return true;
+                          });
+
+                          return uniqueManagers.map((manager, idx) => (
+                            <div 
+                              key={manager.email || idx}
+                              className="p-3.5 bg-background border border-outline-variant/20 hover:border-outline-variant/45 rounded-lg flex items-center justify-between gap-4 transition-all"
                             >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        ))}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-xs font-bold text-white truncate">{manager.name}</h4>
+                                  {manager.role === 'admin' ? (
+                                    <span className="text-[8px] bg-amber-950/40 border border-primary/50 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex-shrink-0">
+                                      Admin
+                                    </span>
+                                  ) : (
+                                    <span className="text-[8px] bg-emerald-950/40 border border-emerald-500/50 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex-shrink-0">
+                                      Manager
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-primary font-medium truncate mt-0.5">{manager.email}</p>
+                                {manager.createdAt && (
+                                  <p className="text-[8px] text-on-surface-variant/70 italic mt-0.5">
+                                    Created: {new Date(manager.createdAt).toLocaleDateString()}
+                                  </p>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleDeleteManager(manager.email)}
+                                className="p-2 bg-red-950/10 border border-red-500/20 hover:border-red-500 hover:bg-red-500 hover:text-white text-red-400 rounded-md transition-all duration-300 cursor-pointer flex-shrink-0"
+                                title="Delete manager role"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ));
+                        })()}
                       </div>
                     )}
                   </div>

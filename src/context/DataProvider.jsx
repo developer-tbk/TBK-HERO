@@ -7,7 +7,8 @@ import {
   getDocs, 
   getDoc, 
   updateDoc, 
-  deleteDoc 
+  deleteDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../firebase';
 
@@ -427,6 +428,69 @@ export const DataProvider = ({ children }) => {
     loadAllData();
   }, []);
 
+  // 1b. Real-time Firebase listeners
+  useEffect(() => {
+    if (!isLoaded || !isFirebaseConfigured || !db) return;
+
+    console.log('%c🔥 Subscribing to real-time Cloud Firestore listeners...', 'color: #ffca28; font-weight: bold;');
+
+    const unsubscribeBookings = onSnapshot(collection(db, 'bookings'), (snapshot) => {
+      const loadedBookings = [];
+      snapshot.forEach((doc) => {
+        loadedBookings.push(doc.data());
+      });
+      setBookings(loadedBookings.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+    }, (err) => {
+      console.error('Real-time bookings sync failed:', err);
+    });
+
+    const unsubscribeMenuItems = onSnapshot(collection(db, 'menuItems'), (snapshot) => {
+      const loadedMenuItems = [];
+      snapshot.forEach((doc) => {
+        loadedMenuItems.push(doc.data());
+      });
+      setMenuItems(loadedMenuItems);
+    }, (err) => {
+      console.error('Real-time menuItems sync failed:', err);
+    });
+
+    const unsubscribeGallery = onSnapshot(collection(db, 'galleryImages'), (snapshot) => {
+      const loadedGallery = [];
+      snapshot.forEach((doc) => {
+        loadedGallery.push(doc.data());
+      });
+      setGalleryImages(loadedGallery);
+    }, (err) => {
+      console.error('Real-time galleryImages sync failed:', err);
+    });
+
+    const unsubscribeSettings = onSnapshot(doc(db, 'settings', 'operational'), (docSnap) => {
+      if (docSnap.exists()) {
+        const settings = docSnap.data();
+        setContactInfo(settings.contactInfo || DEFAULT_CONTACT_INFO);
+        setCloudinarySettings(settings.cloudinarySettings || DEFAULT_CLOUDINARY_SETTINGS);
+        setMessages(settings.messages || []);
+        setRestaurantMenuImage(settings.restaurantMenuImage || '');
+        setBanquetMenuImage(settings.banquetMenuImage || '');
+        setBanquetVegMenuImage(settings.banquetVegMenuImage || '');
+        setBanquetNonVegMenuImage(settings.banquetNonVegMenuImage || '');
+        setManagerMenuEditingEnabled(settings.managerMenuEditingEnabled !== undefined ? settings.managerMenuEditingEnabled : true);
+        setManagerGalleryEditingEnabled(settings.managerGalleryEditingEnabled !== undefined ? settings.managerGalleryEditingEnabled : true);
+        setManagerSettingsEditingEnabled(settings.managerSettingsEditingEnabled !== undefined ? settings.managerSettingsEditingEnabled : true);
+        setManagerBookingsEditingEnabled(settings.managerBookingsEditingEnabled !== undefined ? settings.managerBookingsEditingEnabled : true);
+      }
+    }, (err) => {
+      console.error('Real-time settings sync failed:', err);
+    });
+
+    return () => {
+      unsubscribeBookings();
+      unsubscribeMenuItems();
+      unsubscribeGallery();
+      unsubscribeSettings();
+    };
+  }, [isLoaded, isFirebaseConfigured]);
+
   // 3. Automated real-time state synchronization backend listener (dev fallbacks)
   useEffect(() => {
     if (!isLoaded || (isFirebaseConfigured && db)) return;
@@ -582,20 +646,18 @@ export const DataProvider = ({ children }) => {
 
   const updateBookingStatus = async (id, status) => {
     // If approving, prevent double-bookings on the same date for the same session!
-    if (status === 'Approved') {
-      const targetBooking = bookings.find(b => b.id === id);
-      if (targetBooking) {
-        const targetSessionPrefix = (targetBooking.session || 'Lunch: 10:30 AM - 03:30 PM').substring(0, 5);
-        const hasConflict = bookings.some(
-          (b) => b.id !== id && 
-                 b.date === targetBooking.date && 
-                 b.status === 'Approved' && 
-                 (b.session || 'Lunch: 10:30 AM - 03:30 PM').substring(0, 5) === targetSessionPrefix
-        );
-        if (hasConflict) {
-          alert(`Conflict Error: Date ${targetBooking.date} already has an approved reservation for the ${targetSessionPrefix} session. You must cancel or reschedule the existing approved booking first.`);
-          return false;
-        }
+    const targetBooking = bookings.find(b => b.id === id);
+    if (status === 'Approved' && targetBooking) {
+      const targetSessionPrefix = (targetBooking.session || 'Lunch: 10:30 AM - 03:30 PM').substring(0, 5);
+      const hasConflict = bookings.some(
+        (b) => b.id !== id && 
+               b.date === targetBooking.date && 
+               b.status === 'Approved' && 
+               (b.session || 'Lunch: 10:30 AM - 03:30 PM').substring(0, 5) === targetSessionPrefix
+      );
+      if (hasConflict) {
+        alert(`Conflict Error: Date ${targetBooking.date} already has an approved reservation for the ${targetSessionPrefix} session. You must cancel or reschedule the existing approved booking first.`);
+        return false;
       }
     }
 
@@ -611,6 +673,20 @@ export const DataProvider = ({ children }) => {
 
     localStorage.setItem('tbk_bookings', JSON.stringify(newBookings));
     setBookings(newBookings);
+
+    // Send Status Update Email via secure server-side SMTP
+    if (targetBooking && (status === 'Approved' || status === 'Rejected') && targetBooking.email && targetBooking.email !== 'offline@bagarakitchen.com') {
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'booking_status',
+          status,
+          booking: { ...targetBooking, status }
+        })
+      }).catch(err => console.error('Failed to dispatch status email:', err));
+    }
+
     return true;
   };
 
@@ -646,9 +722,23 @@ export const DataProvider = ({ children }) => {
 
   const addMessage = (msg) => {
     const newMessages = [
-      { ...msg, id: `m-${Date.now()}`, timestamp: new Date().toISOString() },
+      { ...msg, id: `m-${Date.now()}`, status: 'Pending', timestamp: new Date().toISOString() },
       ...messages
     ];
+    localStorage.setItem('tbk_messages', JSON.stringify(newMessages));
+    setMessages(newMessages);
+    syncSettingsFieldToFirestore('messages', newMessages);
+  };
+
+  const deleteMessage = async (id) => {
+    const newMessages = messages.filter(msg => msg.id !== id);
+    localStorage.setItem('tbk_messages', JSON.stringify(newMessages));
+    setMessages(newMessages);
+    syncSettingsFieldToFirestore('messages', newMessages);
+  };
+
+  const updateMessageStatus = async (id, status) => {
+    const newMessages = messages.map(msg => msg.id === id ? { ...msg, status } : msg);
     localStorage.setItem('tbk_messages', JSON.stringify(newMessages));
     setMessages(newMessages);
     syncSettingsFieldToFirestore('messages', newMessages);
@@ -748,6 +838,8 @@ export const DataProvider = ({ children }) => {
       updateBooking,
       deleteBooking,
       addMessage,
+      deleteMessage,
+      updateMessageStatus,
       updateCloudinarySettings,
       addGalleryImage,
       deleteGalleryImage,

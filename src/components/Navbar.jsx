@@ -52,22 +52,22 @@ const Navbar = ({ onBookClick, onLoginClick, onDashboardClick }) => {
             : 'bg-transparent border-transparent py-5'
         }`}
       >
-        <div className="max-w-6xl mx-auto px-4 md:px-8 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 flex justify-between items-center">
           {/* Logo */}
           <a 
             href="#home" 
             onClick={(e) => handleLinkClick(e, '#home')}
-            className="flex items-center gap-2.5 font-headline text-xl md:text-2xl font-bold text-primary tracking-wide transition-all duration-300 hover:brightness-110 active:scale-95"
+            className="flex items-center gap-3 font-headline font-bold text-primary tracking-wide transition-all duration-300 hover:brightness-110 active:scale-95"
           >
-            <Logo className="w-8 h-8 md:w-9 md:h-9 flex-shrink-0" />
-            <span className="text-primary font-bold font-headline text-sm min-[360px]:text-[15px] min-[400px]:text-base sm:text-xl md:text-2xl tracking-wide leading-tight flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+            <Logo className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-full" />
+            <span className="text-primary font-bold font-headline text-[14px] min-[360px]:text-[16px] sm:text-xl md:text-2xl tracking-wide flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5 leading-tight">
               <span>The Bagara Kitchen</span>
-              <span className="text-[10px] min-[360px]:text-[11px] sm:text-lg text-primary/85 font-sans font-semibold tracking-normal uppercase sm:normal-case mt-[-3px] sm:mt-0">and Bar</span>
+              <span>and Bar</span>
             </span>
           </a>
 
           {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-4 lg:gap-8">
             {navLinks.map((link) => (
               <a
                 key={link.name}

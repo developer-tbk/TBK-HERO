@@ -14,8 +14,13 @@ export const AuthProvider = ({ children }) => {
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           const cleanedEmail = (firebaseUser.email || '').toLowerCase().trim();
-          let role = 'admin';
-          let name = 'Executive Administrator';
+          let role = null;
+          let name = '';
+
+          if (cleanedEmail.includes('admin') || cleanedEmail === 'admin@gmail.com' || cleanedEmail === 'admin@bagarakitchen.com') {
+            role = 'admin';
+            name = 'Executive Administrator';
+          }
 
           if (db) {
             try {
@@ -23,16 +28,22 @@ export const AuthProvider = ({ children }) => {
               const managerSnap = await getDoc(managerRef);
               if (managerSnap.exists()) {
                 const managerData = managerSnap.data();
-                role = 'manager';
-                name = managerData.name || 'Operations Manager';
+                role = managerData.role || 'manager';
+                name = managerData.name || (role === 'admin' ? 'Co-Administrator' : 'Operations Manager');
               }
             } catch (err) {
               console.error('Error fetching manager role:', err);
             }
           }
 
-          const sessionUser = { email: cleanedEmail, role, name, uid: firebaseUser.uid };
-          setUser(sessionUser);
+          if (role) {
+            const sessionUser = { email: cleanedEmail, role, name, uid: firebaseUser.uid };
+            setUser(sessionUser);
+          } else {
+            console.warn('Access denied: Account is not registered or has been deleted.');
+            setUser(null);
+            signOut(auth);
+          }
         } else {
           setUser(null);
         }
@@ -59,8 +70,13 @@ export const AuthProvider = ({ children }) => {
         .then(async (userCredential) => {
           const firebaseUser = userCredential.user;
           const cleanedEmail = (firebaseUser.email || '').toLowerCase().trim();
-          let role = 'admin';
-          let name = 'Executive Administrator';
+          let role = null;
+          let name = '';
+
+          if (cleanedEmail.includes('admin') || cleanedEmail === 'admin@gmail.com' || cleanedEmail === 'admin@bagarakitchen.com') {
+            role = 'admin';
+            name = 'Executive Administrator';
+          }
 
           if (db) {
             try {
@@ -68,12 +84,17 @@ export const AuthProvider = ({ children }) => {
               const managerSnap = await getDoc(managerRef);
               if (managerSnap.exists()) {
                 const managerData = managerSnap.data();
-                role = 'manager';
-                name = managerData.name || 'Operations Manager';
+                role = managerData.role || 'manager';
+                name = managerData.name || (role === 'admin' ? 'Co-Administrator' : 'Operations Manager');
               }
             } catch (err) {
               console.error('Error fetching manager role during login:', err);
             }
+          }
+
+          if (!role) {
+            await signOut(auth);
+            throw new Error('Access Denied: This account is not authorized or has been deleted by the Administrator.');
           }
 
           const sessionUser = { email: cleanedEmail, role, name, uid: firebaseUser.uid };
@@ -111,7 +132,7 @@ export const AuthProvider = ({ children }) => {
             );
 
             if (foundManager) {
-              const sessionUser = { email: cleanedEmail, role: 'manager', name: foundManager.name };
+              const sessionUser = { email: cleanedEmail, role: foundManager.role || 'manager', name: foundManager.name };
               localStorage.setItem('tbk_session', JSON.stringify(sessionUser));
               setUser(sessionUser);
               resolve(sessionUser);

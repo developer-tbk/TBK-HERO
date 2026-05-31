@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Loader2, Key, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 
@@ -24,22 +24,17 @@ const Login = ({ onCancel }) => {
     try {
       await login(email, password);
     } catch (err) {
-      setError(err.message || 'Login failed. Please check credentials.');
+      let msg = err.message || '';
+      if (msg.toLowerCase().includes('firebase') || msg.includes('auth/')) {
+        msg = 'Error (Invalid Credentials)';
+      } else {
+        msg = 'Login failed. Please check credentials.';
+      }
+      setError(msg);
       setLoading(false);
     }
   };
 
-  // Helper shortcut to fill login quickly
-  const fillCredentials = (role) => {
-    if (role === 'admin') {
-      setEmail('admin@bagarakitchen.com');
-      setPassword('admin123');
-    } else {
-      setEmail('manager@bagarakitchen.com');
-      setPassword('manager123');
-    }
-    setError(null);
-  };
 
   return (
     <div className="min-h-screen bg-[#001b16] flex items-center justify-center p-6 relative overflow-hidden">
@@ -51,22 +46,11 @@ const Login = ({ onCancel }) => {
       <div className="relative w-full max-w-md bg-surface border border-outline-variant/30 rounded-2xl shadow-2xl p-8 backdrop-blur-md z-10 space-y-8">
         
         {/* Header Block */}
-        <div className="text-center space-y-3 flex flex-col items-center">
-          <Logo className="w-16 h-16" />
-          <div className="space-y-1 flex flex-col items-center">
+        <div className="flex flex-col items-center gap-4 mb-10">
+          <Logo className="w-32 h-32 md:w-40 md:h-40" />
+          <div className="text-center space-y-1">
             <h2 className="font-headline text-2xl text-white font-bold">TBK Control Center</h2>
             <p className="text-xs text-on-surface-variant font-light">Secure administrative portals</p>
-            {isFirebaseConfigured ? (
-              <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                Firebase Auth Active
-              </span>
-            ) : (
-              <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                Dev Local Fallback
-              </span>
-            )}
           </div>
         </div>
 
@@ -134,28 +118,6 @@ const Login = ({ onCancel }) => {
           </button>
         </form>
 
-        {/* Credentials Shortcuts helper */}
-        <div className="pt-4 border-t border-outline-variant/20 space-y-3">
-          <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider text-center flex items-center justify-center gap-1">
-            <Key size={10} /> Fast Credential Toggles
-          </p>
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <button
-              onClick={() => fillCredentials('admin')}
-              disabled={loading}
-              className="py-2.5 px-3 bg-surface-low border border-outline-variant/40 hover:border-primary/45 rounded-lg text-on-surface-variant hover:text-white text-center font-medium transition-colors"
-            >
-              Fill Admin
-            </button>
-            <button
-              onClick={() => fillCredentials('manager')}
-              disabled={loading}
-              className="py-2.5 px-3 bg-surface-low border border-outline-variant/40 hover:border-primary/45 rounded-lg text-on-surface-variant hover:text-white text-center font-medium transition-colors"
-            >
-              Fill Manager
-            </button>
-          </div>
-        </div>
 
         {/* Back Link */}
         <button

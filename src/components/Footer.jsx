@@ -18,18 +18,18 @@ const Footer = () => {
   return (
     <footer className="bg-surface-lowest text-on-surface-variant/80 border-t border-outline-variant/20 py-12 px-6 md:px-8">
       <div className="max-w-6xl mx-auto space-y-10">
-        
+
         {/* Content columns */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-          
+
           {/* Column 1: Brand pitch */}
           <div className="md:col-span-8 space-y-4">
             <div className="flex items-center gap-2.5">
-              <Logo className="w-10 h-10" />
+              <Logo className="w-13 h-13" />
               <h4 className="font-headline text-xl text-primary font-bold">The Bagara Kitchen and Bar</h4>
             </div>
             <p className="text-sm font-light leading-relaxed max-w-sm">
-              Reviving royal slow-cooked Nizami recipes and balancing Deccan spices with modern premium craft beer pairings in a premium atmospheric dining setting.
+              Honoring timeless slow-cooked culinary traditions while harmonizing bold Deccan flavors with premium craft beer pairings, all within a sophisticated and atmospheric dining experience.
             </p>
           </div>
 
@@ -57,19 +57,19 @@ const Footer = () => {
         {/* Lower row: Copyright and licensing */}
         <div className="pt-8 border-t border-outline-variant/15 flex flex-col sm:flex-row justify-between items-center gap-6 text-xs font-light">
           <span>&copy; {currentYear} The Bagara Kitchen and Bar. All rights reserved.</span>
-          
+
           {/* Developed By Rudvay Tech branding */}
-          <a 
-            href="https://rudvay.tech" 
-            target="_blank" 
+          <a
+            href="https://rudvay.tech"
+            target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-on-surface-variant/80 hover:text-white transition-all duration-300 group"
           >
             <span>Developed By</span>
             <span className="font-bold text-[#e2e2e2] group-hover:text-primary transition-colors">Rudvay tech</span>
-            <img 
-              src="/rudvay_logo.jpg" 
-              alt="Rudvay Tech Logo" 
+            <img
+              src="/rudvay_logo.jpg"
+              alt="Rudvay Tech Logo"
               className="w-6 h-6 object-contain group-hover:scale-110 transition-all duration-300"
               style={{ mixBlendMode: 'screen' }}
             />
