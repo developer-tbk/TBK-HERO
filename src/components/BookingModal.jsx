@@ -133,7 +133,7 @@ const BookingModal = ({ isOpen, onClose }) => {
         currency: "INR",
         name: "The Bagara Kitchen",
         description: "Banquet Advance Payment",
-        image: "https://the-bagara-kitchen.vercel.app/logo.png",
+        image: "https://the-bagara-kitchen.vercel.app/logo.png?v=2",
         order_id: data.order.id, // Use the dynamically generated order ID
         handler: function (response) {
           const paymentData = {
