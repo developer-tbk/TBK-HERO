@@ -28,7 +28,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     date: '',
     guests: '100',
     eventType: 'Corporate Gathering',
-    catering: 'Royal Fusion Menu',
+    catering: 'Veg Silver',
     notes: '',
     session: 'Lunch: 10:30 AM - 03:30 PM'
   });
@@ -172,7 +172,7 @@ const BookingModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e, bypassPayment = false) => {
     if (e) e.preventDefault();
 
     if (formData.date < todayString) {
@@ -200,7 +200,7 @@ const BookingModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    if (advanceAmount && Number(advanceAmount) > 0) {
+    if (!bypassPayment && advanceAmount && Number(advanceAmount) > 0) {
       handleRazorpayPayment();
     } else {
       processSubmission({ paidAdvance: false });
@@ -301,7 +301,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                   <p className="text-on-surface-variant"><strong className="text-white">Host Name:</strong> {formData.name}</p>
                   <p className="text-on-surface-variant"><strong className="text-white">Date of Event:</strong> {formData.date}</p>
                   <p className="text-on-surface-variant"><strong className="text-white">Session Time:</strong> {formData.session}</p>
-                  <p className="text-on-surface-variant"><strong className="text-white">Expected Guests:</strong> {formData.guests} Guests</p>
+                  <p className="text-on-surface-variant"><strong className="text-white">Guests:</strong> {formData.guests} Guests</p>
                   <p className="text-on-surface-variant"><strong className="text-white">Menu:</strong> {formData.catering}</p>
                 </div>
 
@@ -454,7 +454,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                   )}
 
                   {step === 3 && (
-                    // STEP 3: Dining and Catering preferences
+                    // STEP 3: Special notes
                     <motionFramer
                       key="step3"
                       initial={{ opacity: 0, x: 20 }}
@@ -475,10 +475,10 @@ const BookingModal = ({ isOpen, onClose }) => {
                             onChange={handleChange}
                             className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-primary"
                           >
-                            <option>Veg Silver</option>
-                            <option>Veg Gold</option>
-                            <option>Non-Veg Silver</option>
-                            <option>Non-Veg Gold</option>
+                            <option value="Veg Silver">Veg Silver</option>
+                            <option value="Veg Gold">Veg Gold</option>
+                            <option value="Non-Veg Silver">Non-Veg Silver</option>
+                            <option value="Non-Veg Gold">Non-Veg Gold</option>
                           </select>
                         </div>
 
@@ -518,7 +518,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                     <div className="flex flex-col sm:flex-row gap-3 ml-auto">
                       <button
                         type="button"
-                        onClick={handleSubmit}
+                        onClick={(e) => handleSubmit(e, true)}
                         disabled={isSubmitting}
                         className="flex items-center justify-center gap-2 bg-surface hover:bg-surface-high border border-outline-variant/30 text-white font-bold py-3 px-5 rounded-lg text-sm transition-all shadow-md"
                       >
@@ -526,7 +526,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                       </button>
                       <button
                         type="button"
-                        onClick={handleRazorpayPayment}
+                        onClick={(e) => handleSubmit(e, false)}
                         disabled={isSubmitting}
                         className="flex items-center justify-center gap-2 bg-primary hover:bg-[#059669] disabled:bg-primary/50 text-white font-bold py-3 px-5 rounded-lg text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-primary/20"
                       >

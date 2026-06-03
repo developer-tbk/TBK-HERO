@@ -126,7 +126,7 @@ export default async function handler(req, res) {
               <h3 style="color: #c5a059; font-size: 12px; text-transform: uppercase; margin: 0 0 10px 0; tracking-wider;">Reservation Request Summary</h3>
               <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Event Date:</strong> ${data.date}</p>
               <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Session Time:</strong> ${data.session}</p>
-              <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Expected Guests:</strong> ${data.guests} Guests</p>
+              <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Guests:</strong> ${data.guests}</p>
               <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Catering Menu:</strong> ${data.catering}</p>
             </div>
 
@@ -186,7 +186,7 @@ export default async function handler(req, res) {
               <h3 style="color: #c5a059; font-size: 12px; text-transform: uppercase; margin: 0 0 10px 0; tracking-wider;">Reservation Details</h3>
               <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Booking ID:</strong> ${booking.id}</p>
               <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Event Date:</strong> ${booking.date}</p>
-              <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Expected Guests:</strong> ${booking.guests} Guests</p>
+              <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Guests:</strong> ${booking.guests}</p>
               <p style="margin: 4px 0; font-size: 12px; color: #e2e2e2; font-weight: 300;"><strong>Catering Selection:</strong> ${booking.catering}</p>
             </div>
 

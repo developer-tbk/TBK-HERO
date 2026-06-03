@@ -96,7 +96,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
     date: '',
     guests: '100',
     eventType: 'Corporate Gathering',
-    catering: 'Royal Fusion Menu',
+    catering: 'Veg Silver',
     notes: '',
     status: 'Pending',
     session: 'Lunch: 10:30 AM - 03:30 PM'
@@ -314,7 +314,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
       date: '',
       guests: '100',
       eventType: 'Corporate Gathering',
-      catering: 'Royal Fusion Menu',
+      catering: 'Veg Silver',
       notes: '',
       status: 'Pending',
       session: 'Lunch: 10:30 AM - 03:30 PM'
@@ -722,7 +722,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                     date: '',
                     guests: '100',
                     eventType: 'Corporate Gathering',
-                    catering: 'Royal Fusion Menu',
+                    catering: 'Veg Silver',
                     notes: '',
                     status: 'Pending',
                     session: 'Lunch: 10:30 AM - 03:30 PM'
@@ -882,7 +882,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                                 date: booking.date || '',
                                 guests: booking.guests || '100',
                                 eventType: booking.eventType || 'Corporate Gathering',
-                                catering: booking.catering || 'Royal Fusion Menu',
+                                catering: booking.catering || 'Veg Silver',
                                 notes: booking.notes ? booking.notes.replace(/^\[Offline Booking\]\s*/, '') : '',
                                 status: booking.status || 'Pending',
                                 session: booking.session || 'Lunch: 10:30 AM - 03:30 PM'
