@@ -214,9 +214,9 @@ const DEFAULT_CLOUDINARY_SETTINGS = {
 };
 
 const DEFAULT_GALLERY_IMAGES = [
-  { id: 'gal-1', title: 'Luxury Ochre Velvet Seating', image: 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=600&auto=format&fit=crop', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'gal-2', title: 'Authentic Nizam Kitchen handis', image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=600&auto=format&fit=crop', timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'gal-3', title: 'Luxurious dining room ambience', image: 'https://images.unsplash.com/photo-1571613316887-6f8d5cbf7ef7?q=80&w=600&auto=format&fit=crop', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() }
+  { id: 'gal-1', title: 'Luxury Ochre Velvet Seating', image: 'https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?q=80&w=600&auto=format&fit=crop', type: 'banquet hall', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: 'gal-2', title: 'Authentic Nizam Kitchen handis', image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=600&auto=format&fit=crop', type: 'food', timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: 'gal-3', title: 'Luxurious dining room ambience', image: 'https://images.unsplash.com/photo-1571613316887-6f8d5cbf7ef7?q=80&w=600&auto=format&fit=crop', type: 'restaurant', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() }
 ];
 
 export const DataProvider = ({ children }) => {
@@ -236,6 +236,8 @@ export const DataProvider = ({ children }) => {
   const [managerGalleryEditingEnabled, setManagerGalleryEditingEnabled] = useState(true);
   const [managerSettingsEditingEnabled, setManagerSettingsEditingEnabled] = useState(true);
   const [managerBookingsEditingEnabled, setManagerBookingsEditingEnabled] = useState(true);
+  
+  const [advanceAmount, setAdvanceAmount] = useState('5000');
   
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -337,6 +339,7 @@ export const DataProvider = ({ children }) => {
             setManagerGalleryEditingEnabled(true);
             setManagerSettingsEditingEnabled(true);
             setManagerBookingsEditingEnabled(true);
+            setAdvanceAmount(defaultSettings.advanceAmount || '5000');
           } else {
             // Apply loaded values
             setMenuItems(loadedMenuItems);
@@ -344,7 +347,7 @@ export const DataProvider = ({ children }) => {
             setCloudinarySettings(settings.cloudinarySettings || DEFAULT_CLOUDINARY_SETTINGS);
             setBookings(loadedBookings.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
             setMessages(settings.messages || []);
-            setGalleryImages(loadedGallery);
+            setGalleryImages(loadedGallery.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
             setRestaurantMenuImage(settings.restaurantMenuImage || '');
             setBanquetMenuImage(settings.banquetMenuImage || '');
             setBanquetVegMenuImage(settings.banquetVegMenuImage || '');
@@ -353,6 +356,7 @@ export const DataProvider = ({ children }) => {
             setManagerGalleryEditingEnabled(settings.managerGalleryEditingEnabled !== undefined ? settings.managerGalleryEditingEnabled : true);
             setManagerSettingsEditingEnabled(settings.managerSettingsEditingEnabled !== undefined ? settings.managerSettingsEditingEnabled : true);
             setManagerBookingsEditingEnabled(settings.managerBookingsEditingEnabled !== undefined ? settings.managerBookingsEditingEnabled : true);
+            setAdvanceAmount(settings.advanceAmount !== undefined ? settings.advanceAmount : '5000');
           }
 
           setIsLoaded(true);
@@ -378,6 +382,7 @@ export const DataProvider = ({ children }) => {
         setManagerGalleryEditingEnabled(dbData.managerGalleryEditingEnabled !== undefined ? dbData.managerGalleryEditingEnabled : true);
         setManagerSettingsEditingEnabled(dbData.managerSettingsEditingEnabled !== undefined ? dbData.managerSettingsEditingEnabled : true);
         setManagerBookingsEditingEnabled(dbData.managerBookingsEditingEnabled !== undefined ? dbData.managerBookingsEditingEnabled : true);
+        setAdvanceAmount(dbData.advanceAmount !== undefined ? dbData.advanceAmount : '5000');
         setIsLoaded(true);
         return;
       }
@@ -421,6 +426,8 @@ export const DataProvider = ({ children }) => {
       setManagerGalleryEditingEnabled(localStorage.getItem('tbk_manager_gallery_edit') !== null ? JSON.parse(localStorage.getItem('tbk_manager_gallery_edit')) : true);
       setManagerSettingsEditingEnabled(localStorage.getItem('tbk_manager_settings_edit') !== null ? JSON.parse(localStorage.getItem('tbk_manager_settings_edit')) : true);
       setManagerBookingsEditingEnabled(localStorage.getItem('tbk_manager_bookings_edit') !== null ? JSON.parse(localStorage.getItem('tbk_manager_bookings_edit')) : true);
+      
+      setAdvanceAmount(localStorage.getItem('tbk_advance_amount') || '5000');
 
       setIsLoaded(true);
     };
@@ -459,7 +466,7 @@ export const DataProvider = ({ children }) => {
       snapshot.forEach((doc) => {
         loadedGallery.push(doc.data());
       });
-      setGalleryImages(loadedGallery);
+      setGalleryImages(loadedGallery.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
     }, (err) => {
       console.error('Real-time galleryImages sync failed:', err);
     });
@@ -808,6 +815,12 @@ export const DataProvider = ({ children }) => {
     syncSettingsFieldToFirestore('managerBookingsEditingEnabled', enabled);
   };
 
+  const updateAdvanceAmount = (amount) => {
+    localStorage.setItem('tbk_advance_amount', amount);
+    setAdvanceAmount(amount);
+    syncSettingsFieldToFirestore('advanceAmount', amount);
+  };
+
   return (
     <DataContext.Provider value={{
       menuItems,
@@ -824,6 +837,7 @@ export const DataProvider = ({ children }) => {
       managerGalleryEditingEnabled,
       managerSettingsEditingEnabled,
       managerBookingsEditingEnabled,
+      advanceAmount,
       isLoaded,
       addMenuItem,
       updateMenuItem,
@@ -846,7 +860,8 @@ export const DataProvider = ({ children }) => {
       updateManagerMenuEditingEnabled,
       updateManagerGalleryEditingEnabled,
       updateManagerSettingsEditingEnabled,
-      updateManagerBookingsEditingEnabled
+      updateManagerBookingsEditingEnabled,
+      updateAdvanceAmount
     }}>
       {children}
     </DataContext.Provider>

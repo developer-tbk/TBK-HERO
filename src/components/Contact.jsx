@@ -78,25 +78,31 @@ const Contact = () => {
                   </div>
                 </a>
 
-                <div className="flex items-start gap-4 text-on-surface-variant group">
+                <a 
+                  href={`tel:${contactInfo.phone}`}
+                  className="flex items-start gap-4 text-on-surface-variant group cursor-pointer hover:text-white transition-colors duration-300"
+                >
                   <div className="p-3 bg-surface border border-outline-variant/30 rounded-xl group-hover:border-secondary transition-colors duration-300 text-secondary">
                     <Phone size={20} />
                   </div>
                   <div>
-                    <h4 className="text-white text-sm font-semibold uppercase tracking-wider">Call Us</h4>
+                    <h4 className="text-white text-sm font-semibold uppercase tracking-wider group-hover:text-secondary transition-colors duration-300">Call Us</h4>
                     <p className="text-sm font-light mt-1">{contactInfo.phone}</p>
                   </div>
-                </div>
+                </a>
 
-                <div className="flex items-start gap-4 text-on-surface-variant group">
+                <a 
+                  href={`mailto:${contactInfo.email}`}
+                  className="flex items-start gap-4 text-on-surface-variant group cursor-pointer hover:text-white transition-colors duration-300"
+                >
                   <div className="p-3 bg-surface border border-outline-variant/30 rounded-xl group-hover:border-secondary transition-colors duration-300 text-secondary">
                     <Mail size={20} />
                   </div>
                   <div>
-                    <h4 className="text-white text-sm font-semibold uppercase tracking-wider">Email Inquiry</h4>
+                    <h4 className="text-white text-sm font-semibold uppercase tracking-wider group-hover:text-secondary transition-colors duration-300">Email Inquiry</h4>
                     <p className="text-sm font-light mt-1">{contactInfo.email}</p>
                   </div>
-                </div>
+                </a>
               </div>
             </div>
 

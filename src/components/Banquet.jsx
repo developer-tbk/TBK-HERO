@@ -1,8 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Users, Utensils, Music, CalendarDays } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 const Banquet = ({ onOpenBooking }) => {
+  const { galleryImages } = useData();
+  const banquetImage = galleryImages?.find(img => img.type === 'banquet hall');
+  const displayImageSrc = banquetImage?.image || '/banquet.png';
+  const displayImageTitle = banquetImage?.title || 'Luxury Imperial Seating';
+
   const features = [
     {
       icon: <Users className="text-secondary w-8 h-8" />,
@@ -88,7 +94,7 @@ const Banquet = ({ onOpenBooking }) => {
           {/* Luxury Seating Photo from screens */}
           <div className="relative aspect-[4/5] rounded-xl overflow-hidden shadow-2xl shadow-black/80 border border-outline-variant/30">
             <img 
-              src="https://lh3.googleusercontent.com/aida/ADBb0uigC9XP2sqWjiQ1rlYLzvvfUbwsSxBGP5q-TAW0B07ZnQ7H0m5EUQ2pkzfvgKrWvul_xmAAhlVeLUoj5q2DzYyuxnjawe8qe_aUzShherndrojZNa_crZ9dzaNAhXR88bZIws8STW_rv5-uzUFxBP0xYiYbsbjPBMLjNIEIiLNoCIadP73uybg3hYPXFeYwjYchB4sYAKpzqVYrUitq9IXosrACWxH2b-c35wcEXJHyIT6wH-QTfOxM98FbwTDZk6sYP8gYzrh7Ig" 
+              src={displayImageSrc} 
               alt="Luxury Banquet Seating Setup" 
               className="w-full h-full object-cover transition-transform duration-[1500ms] group-hover:scale-105"
             />
@@ -99,7 +105,7 @@ const Banquet = ({ onOpenBooking }) => {
             {/* Details floating tag */}
             <div className="absolute bottom-6 left-6 right-6">
               <span className="text-secondary text-[10px] font-bold uppercase tracking-[0.25em]">Exclusive Preview</span>
-              <h4 className="text-white font-headline text-xl font-medium mt-1">Luxury Imperial Seating</h4>
+              <h4 className="text-white font-headline text-xl font-medium mt-1">{displayImageTitle}</h4>
               <p className="text-on-surface-variant text-xs font-light mt-1">Authentic velvet ochre upholstery and gold cutlery accents.</p>
             </div>
           </div>

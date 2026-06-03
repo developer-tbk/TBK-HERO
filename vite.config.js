@@ -65,6 +65,34 @@ const localDbPlugin = () => {
               }
             });
           }
+        } else if (req.url === '/api/create-razorpay-order') {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', async () => {
+              try {
+                req.body = JSON.parse(body);
+
+                // Attach Vercel-like helpers for local middleware compatibility
+                res.status = (code) => {
+                  res.statusCode = code;
+                  return res;
+                };
+                res.json = (data) => {
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify(data));
+                  return res;
+                };
+
+                const { default: createRazorpayHandler } = await import('./api/create-razorpay-order.js');
+                await createRazorpayHandler(req, res);
+              } catch (e) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: e.message }));
+              }
+            });
+          }
         } else {
           next();
         }
@@ -82,6 +110,8 @@ export default defineConfig(({ mode }) => {
   process.env.SMTP_USER = env.SMTP_USER || 'developer.tbk1@gmail.com';
   process.env.SMTP_PASS = env.SMTP_PASS || 'kmjtqvagitxlwgir';
   process.env.SMTP_ADMIN_EMAIL = env.SMTP_ADMIN_EMAIL || 'thebagarakitchen.bar@gmail.com';
+  process.env.VITE_RAZORPAY_KEY_ID = env.VITE_RAZORPAY_KEY_ID || 'rzp_test_Sw2XA2RVzxAmX0';
+  process.env.RAZORPAY_KEY_SECRET = env.RAZORPAY_KEY_SECRET || 'qyBQT62H1JykVx4qZzNgQB0I';
 
   return {
     plugins: [react(), tailwindcss(), localDbPlugin()],

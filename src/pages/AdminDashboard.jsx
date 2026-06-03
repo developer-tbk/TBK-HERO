@@ -50,16 +50,26 @@ const AdminDashboard = ({ onGoToPublic }) => {
     updateManagerMenuEditingEnabled,
     updateManagerGalleryEditingEnabled,
     updateManagerSettingsEditingEnabled,
-    updateManagerBookingsEditingEnabled
+    updateManagerBookingsEditingEnabled,
+    advanceAmount,
+    updateAdvanceAmount
   } = useData();
 
   const [activeTab, setActiveTab] = useState('bookings');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [bookingFilter, setBookingFilter] = useState('upcoming');
+
+  // Dynamic timezone-safe local date YYYY-MM-DD
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayString = `${yyyy}-${mm}-${dd}`;
   
   // Cloudinary Settings Form State
   const [cloudName, setCloudName] = useState(cloudinarySettings.cloudName || 'demo');
   const [uploadPreset, setUploadPreset] = useState(cloudinarySettings.uploadPreset || 'unsigned_preset');
+  const [localAdvanceAmount, setLocalAdvanceAmount] = useState(advanceAmount || '5000');
   const [settingsSuccess, setSettingsSuccess] = useState(false);
 
   // Managers registry states
@@ -216,6 +226,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
   const handleSaveSettings = (e) => {
     e.preventDefault();
     updateCloudinarySettings({ cloudName, uploadPreset });
+    updateAdvanceAmount(localAdvanceAmount);
     setSettingsSuccess(true);
     setTimeout(() => setSettingsSuccess(false), 3000);
   };
@@ -276,7 +287,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
         {/* Mobile Hamburger Toggle */}
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="lg:hidden text-primary focus:outline-none p-1 transition-transform duration-200 active:scale-90 cursor-pointer"
+          className="lg:hidden text-primary flex-shrink-0 focus:outline-none p-1 transition-transform duration-200 active:scale-90 cursor-pointer"
           aria-label="Toggle menu"
         >
           {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
@@ -343,7 +354,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
                   }`}
                 >
                   <Settings size={16} />
-                  API Integrations
+                  API & Payments
                 </button>
 
                 <button
@@ -446,7 +457,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
               }`}
             >
               <Settings size={16} />
-              API Integrations
+              API & Payments
             </button>
 
             <button
@@ -524,40 +535,54 @@ const AdminDashboard = ({ onGoToPublic }) => {
               </div>
 
               {/* Booking Filter Tabs */}
-              <div className="flex border-b border-outline-variant/15 pb-px gap-2 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setBookingFilter('upcoming')}
-                  className={`pb-3 pt-1 px-4 font-semibold text-xs tracking-wider uppercase border-b-2 transition-all relative cursor-pointer ${
-                    bookingFilter === 'upcoming'
-                      ? 'border-primary text-primary font-bold'
-                      : 'border-transparent text-on-surface-variant hover:text-white'
-                  }`}
-                >
-                  Upcoming Events ({bookings.filter(b => b.status !== 'Completed').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBookingFilter('history')}
-                  className={`pb-3 pt-1 px-4 font-semibold text-xs tracking-wider uppercase border-b-2 transition-all relative cursor-pointer ${
-                    bookingFilter === 'history'
-                      ? 'border-primary text-primary font-bold'
-                      : 'border-transparent text-on-surface-variant hover:text-white'
-                  }`}
-                >
-                  Booking History ({bookings.filter(b => b.status === 'Completed').length})
-                </button>
+              <div className="flex overflow-x-auto whitespace-nowrap scrollbar-hide border-b border-outline-variant/15 pb-px gap-2 mb-4">
+                {[
+                  { id: 'upcoming', label: 'Upcoming Events', count: bookings.filter(b => b.date >= todayString && b.status !== 'Completed' && b.status !== 'Rejected').length },
+                  { id: 'history', label: 'Booking History', count: bookings.filter(b => b.date < todayString || b.status === 'Completed' || b.status === 'Rejected').length },
+                  { id: 'pending', label: 'Pending', count: bookings.filter(b => b.status === 'Pending').length },
+                  { id: 'approved', label: 'Approved', count: bookings.filter(b => b.status === 'Approved').length },
+                  { id: 'rejected', label: 'Rejected', count: bookings.filter(b => b.status === 'Rejected').length },
+                  { id: 'offline', label: 'Offline', count: bookings.filter(b => b.isOffline || b.email === 'offline@bagarakitchen.com' || (b.notes && b.notes.includes('[Offline Booking]'))).length }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setBookingFilter(tab.id)}
+                    className={`pb-3 pt-1 px-4 font-semibold text-xs tracking-wider uppercase border-b-2 transition-all relative cursor-pointer flex-shrink-0 ${
+                      bookingFilter === tab.id
+                        ? 'border-primary text-primary font-bold'
+                        : 'border-transparent text-on-surface-variant hover:text-white'
+                    }`}
+                  >
+                    {tab.label} ({tab.count})
+                  </button>
+                ))}
               </div>
 
               {(() => {
-                const filteredBookings = bookings.filter(
-                  (b) => bookingFilter === 'upcoming' ? b.status !== 'Completed' : b.status === 'Completed'
-                );
+                const filteredBookings = bookings.filter((b) => {
+                  switch (bookingFilter) {
+                    case 'upcoming':
+                      return b.date >= todayString && b.status !== 'Completed' && b.status !== 'Rejected';
+                    case 'history':
+                      return b.date < todayString || b.status === 'Completed' || b.status === 'Rejected';
+                    case 'pending':
+                      return b.status === 'Pending';
+                    case 'approved':
+                      return b.status === 'Approved';
+                    case 'rejected':
+                      return b.status === 'Rejected';
+                    case 'offline':
+                      return b.isOffline || b.email === 'offline@bagarakitchen.com' || (b.notes && b.notes.includes('[Offline Booking]'));
+                    default:
+                      return true;
+                  }
+                });
 
                 return filteredBookings.length === 0 ? (
                   <div className="text-center py-16 text-on-surface-variant/60 font-light space-y-2 bg-surface-low/30 border border-outline-variant/10 rounded-xl">
                     <Database className="w-10 h-10 mx-auto text-outline-variant/50 animate-pulse" />
-                    <p>No {bookingFilter === 'upcoming' ? 'upcoming' : 'completed'} banquet bookings found.</p>
+                    <p>No banquet bookings found for this category.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -602,7 +627,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
                         </div>
 
                         {/* Booking Details Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-xs font-light">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs font-light">
                           <div className="space-y-1">
                             <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Event Date</p>
                             <p className="text-white font-medium">{booking.date}</p>
@@ -632,7 +657,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
                         )}
 
                         {/* Actions */}
-                        <div className="flex flex-wrap justify-end gap-2 border-t border-outline-variant/10 pt-3 w-full">
+                        <div className="flex flex-col sm:flex-row flex-wrap sm:justify-end gap-2 sm:gap-3 border-t border-outline-variant/10 pt-3 w-full">
                           {booking.status !== 'Approved' && (
                             <button
                               onClick={() => updateBookingStatus(booking.id, 'Approved')}
@@ -732,7 +757,7 @@ const AdminDashboard = ({ onGoToPublic }) => {
                       </p>
 
                       {/* Inquiry Actions */}
-                      <div className="flex justify-end gap-2 border-t border-outline-variant/10 pt-3 flex-wrap">
+                      <div className="flex flex-col sm:flex-row flex-wrap sm:justify-end gap-2 sm:gap-3 border-t border-outline-variant/10 pt-3 w-full">
                         <a
                           href={`mailto:${msg.email}?subject=Regarding your Inquiry - The Bagara Kitchen and Bar`}
                           className="bg-primary/15 border border-primary/40 hover:bg-primary hover:text-white text-primary font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
@@ -781,9 +806,9 @@ const AdminDashboard = ({ onGoToPublic }) => {
             <div className="bg-surface border border-outline-variant/35 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
               <div className="border-b border-outline-variant/20 pb-4">
                 <h2 className="font-headline text-2xl text-white font-bold flex items-center gap-2">
-                  <Sliders className="text-secondary" /> Cloudinary API Integration
+                  <Sliders className="text-secondary" /> API & Payment Integrations
                 </h2>
-                <p className="text-xs text-on-surface-variant font-light mt-1">Configure direct client-side media uploads for your Operations Manager.</p>
+                <p className="text-xs text-on-surface-variant font-light mt-1">Configure direct client-side media uploads and booking payment settings.</p>
               </div>
 
               {settingsSuccess && (
@@ -818,6 +843,19 @@ const AdminDashboard = ({ onGoToPublic }) => {
                     className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white placeholder-on-surface-variant/30 focus:outline-none focus:border-primary transition-all"
                   />
                   <p className="text-[10px] text-on-surface-variant/70 italic font-light">The unsigned upload preset created in your Cloudinary upload settings page.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Booking Advance Amount (₹)</label>
+                  <input 
+                    type="number" 
+                    value={localAdvanceAmount}
+                    onChange={(e) => setLocalAdvanceAmount(e.target.value)}
+                    required
+                    placeholder="e.g. 5000"
+                    className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white placeholder-on-surface-variant/30 focus:outline-none focus:border-primary transition-all"
+                  />
+                  <p className="text-[10px] text-on-surface-variant/70 italic font-light">The mandatory advance payment required to confirm a banquet reservation.</p>
                 </div>
 
                 <button 

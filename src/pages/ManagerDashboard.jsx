@@ -85,7 +85,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
 
   // Gallery Form State
   const [isAddingImage, setIsAddingImage] = useState(false);
-  const [galleryForm, setGalleryForm] = useState({ title: '', image: '' });
+  const [galleryForm, setGalleryForm] = useState({ title: '', image: '', type: 'restaurant' });
 
   // Offline Booking Form State
   const [isAddingBooking, setIsAddingBooking] = useState(false);
@@ -149,10 +149,11 @@ const ManagerDashboard = ({ onGoToPublic }) => {
     }
     addGalleryImage({
       title: galleryForm.title || 'Restaurant Showcase',
-      image: galleryForm.image
+      image: galleryForm.image,
+      type: galleryForm.type
     });
     setIsAddingImage(false);
-    setGalleryForm({ title: '', image: '' });
+    setGalleryForm({ title: '', image: '', type: 'restaurant' });
     showNotification('Image added successfully to the public Gallery Showcase.');
   };
 
@@ -353,7 +354,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
         {/* Mobile Hamburger Button */}
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="text-primary focus:outline-none p-1 transition-transform duration-200 active:scale-90 cursor-pointer"
+          className="text-primary flex-shrink-0 focus:outline-none p-1 transition-transform duration-200 active:scale-90 cursor-pointer"
           aria-label="Toggle menu"
         >
           {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
@@ -746,40 +747,54 @@ const ManagerDashboard = ({ onGoToPublic }) => {
             )}
 
             {/* Booking Filter Tabs */}
-            <div className="flex border-b border-outline-variant/15 pb-px gap-2 mb-4">
-              <button
-                type="button"
-                onClick={() => setBookingFilter('upcoming')}
-                className={`pb-3 pt-1 px-4 font-semibold text-xs tracking-wider uppercase border-b-2 transition-all relative cursor-pointer ${
-                  bookingFilter === 'upcoming'
-                    ? 'border-primary text-primary font-bold'
-                    : 'border-transparent text-on-surface-variant hover:text-white'
-                }`}
-              >
-                Upcoming Events ({bookings.filter(b => b.status !== 'Completed').length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setBookingFilter('history')}
-                className={`pb-3 pt-1 px-4 font-semibold text-xs tracking-wider uppercase border-b-2 transition-all relative cursor-pointer ${
-                  bookingFilter === 'history'
-                    ? 'border-primary text-primary font-bold'
-                    : 'border-transparent text-on-surface-variant hover:text-white'
-                }`}
-              >
-                Booking History ({bookings.filter(b => b.status === 'Completed').length})
-              </button>
+            <div className="flex overflow-x-auto whitespace-nowrap scrollbar-hide border-b border-outline-variant/15 pb-px gap-2 mb-4">
+              {[
+                { id: 'upcoming', label: 'Upcoming Events', count: bookings.filter(b => b.date >= todayString && b.status !== 'Completed' && b.status !== 'Rejected').length },
+                { id: 'history', label: 'Booking History', count: bookings.filter(b => b.date < todayString || b.status === 'Completed' || b.status === 'Rejected').length },
+                { id: 'pending', label: 'Pending', count: bookings.filter(b => b.status === 'Pending').length },
+                { id: 'approved', label: 'Approved', count: bookings.filter(b => b.status === 'Approved').length },
+                { id: 'rejected', label: 'Rejected', count: bookings.filter(b => b.status === 'Rejected').length },
+                { id: 'offline', label: 'Offline', count: bookings.filter(b => b.isOffline || b.email === 'offline@bagarakitchen.com' || (b.notes && b.notes.includes('[Offline Booking]'))).length }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setBookingFilter(tab.id)}
+                  className={`pb-3 pt-1 px-4 font-semibold text-xs tracking-wider uppercase border-b-2 transition-all relative cursor-pointer flex-shrink-0 ${
+                    bookingFilter === tab.id
+                      ? 'border-primary text-primary font-bold'
+                      : 'border-transparent text-on-surface-variant hover:text-white'
+                  }`}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
             </div>
 
             {(() => {
-              const filteredBookings = bookings.filter(
-                (b) => bookingFilter === 'upcoming' ? b.status !== 'Completed' : b.status === 'Completed'
-              );
+              const filteredBookings = bookings.filter((b) => {
+                switch (bookingFilter) {
+                  case 'upcoming':
+                    return b.date >= todayString && b.status !== 'Completed' && b.status !== 'Rejected';
+                  case 'history':
+                    return b.date < todayString || b.status === 'Completed' || b.status === 'Rejected';
+                  case 'pending':
+                    return b.status === 'Pending';
+                  case 'approved':
+                    return b.status === 'Approved';
+                  case 'rejected':
+                    return b.status === 'Rejected';
+                  case 'offline':
+                    return b.isOffline || b.email === 'offline@bagarakitchen.com' || (b.notes && b.notes.includes('[Offline Booking]'));
+                  default:
+                    return true;
+                }
+              });
 
               return filteredBookings.length === 0 ? (
                 <div className="text-center py-16 text-on-surface-variant/60 font-light space-y-2 bg-surface-low/30 border border-outline-variant/10 rounded-xl">
                   <Database className="w-10 h-10 mx-auto text-outline-variant/50 animate-pulse" />
-                  <p>No {bookingFilter === 'upcoming' ? 'upcoming' : 'completed'} banquet bookings found.</p>
+                  <p>No banquet bookings found for this category.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -824,7 +839,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                       </div>
 
                       {/* Booking Details Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-xs font-light">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs font-light">
                         <div className="space-y-1">
                           <p className="text-on-surface-variant font-medium uppercase tracking-wider text-[10px]">Event Date</p>
                           <p className="text-white font-medium">{booking.date}</p>
@@ -854,7 +869,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                       )}
 
                       {/* Actions */}
-                      <div className="flex flex-wrap justify-end gap-2 border-t border-outline-variant/10 pt-3 w-full">
+                      <div className="flex flex-col sm:flex-row flex-wrap sm:justify-end gap-2 sm:gap-3 border-t border-outline-variant/10 pt-3 w-full">
                         {managerBookingsEditingEnabled && (
                           <button
                             onClick={() => {
@@ -999,7 +1014,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                     </p>
 
                     {/* Inquiry Actions */}
-                    <div className="flex justify-end gap-2 border-t border-outline-variant/10 pt-3 flex-wrap">
+                    <div className="flex flex-col sm:flex-row flex-wrap sm:justify-end gap-2 sm:gap-3 border-t border-outline-variant/10 pt-3 w-full">
                       <a
                         href={`mailto:${msg.email}?subject=Regarding your Inquiry - The Bagara Kitchen and Bar`}
                         className="bg-primary/15 border border-primary/40 hover:bg-primary hover:text-white text-primary font-semibold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 transition-all duration-300 cursor-pointer"
@@ -1072,6 +1087,19 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                         placeholder="e.g. VIP Velvet Seating"
                         className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white placeholder-on-surface-variant/30 focus:outline-none focus:border-primary transition-all"
                       />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Image Category</label>
+                      <select 
+                        value={galleryForm.type}
+                        onChange={(e) => setGalleryForm(prev => ({ ...prev, type: e.target.value }))}
+                        className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-primary transition-all appearance-none"
+                      >
+                        <option value="restaurant">Restaurant Ambience</option>
+                        <option value="banquet hall">Banquet Hall</option>
+                        <option value="food">Food & Drinks</option>
+                        <option value="extra">Extra / Other</option>
+                      </select>
                     </div>
                     <div className="pt-2 border-t border-outline-variant/15 flex justify-end gap-3">
                       <button 
@@ -1175,7 +1203,7 @@ const ManagerDashboard = ({ onGoToPublic }) => {
                         </div>
                         <div className="p-4 flex-grow flex items-center justify-between">
                           <span className="text-xs font-semibold text-white truncate max-w-[150px]">{img.title}</span>
-                          <span className="text-[8px] text-on-surface-variant font-light bg-background/50 border border-outline-variant/10 px-2 py-0.5 rounded">Gallery</span>
+                          <span className="text-[8px] text-on-surface-variant font-light bg-background/50 border border-outline-variant/10 px-2 py-0.5 rounded capitalize">{img.type || 'Gallery'}</span>
                         </div>
                       </div>
                     ))}

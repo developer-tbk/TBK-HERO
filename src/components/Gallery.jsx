@@ -65,7 +65,7 @@ const Gallery = () => {
               {/* Text Info Overlay */}
               <div className="absolute bottom-0 left-0 right-0 p-6 z-20 flex flex-col justify-end translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
                 <span className="text-[10px] text-secondary font-bold uppercase tracking-[0.2em] flex items-center gap-1 mb-1">
-                  <ImageIcon size={10} /> Fine Dining Preview
+                  <ImageIcon size={10} /> {item.type || 'Fine Dining Preview'}
                 </span>
                 <h3 className="font-headline text-lg md:text-xl text-white font-medium line-clamp-1">
                   {item.title}

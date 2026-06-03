@@ -7,10 +7,11 @@ import BanquetDatePicker from './BanquetDatePicker';
 const motionFramer = motion;
 
 const BookingModal = ({ isOpen, onClose }) => {
-  const { addBooking, bookings } = useData();
+  const { addBooking, bookings, advanceAmount } = useData();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState(null);
 
   // Dynamic timezone-safe local date YYYY-MM-DD
   const today = new Date();
@@ -67,7 +68,7 @@ const BookingModal = ({ isOpen, onClose }) => {
       }
       const digitCount = formData.phone.replace(/\D/g, '').length;
       if (digitCount < 10 || digitCount > 13) {
-        alert("Action Blocked: Phone number must contain between 10 and 13 digits (e.g. 9876543210 or +91 79953 61212).");
+        alert("Action Blocked: Phone number must contain between 10 and 13 digits (e.g. 9876543210 or +91 98765 43210).");
         return;
       }
     }
@@ -79,8 +80,100 @@ const BookingModal = ({ isOpen, onClose }) => {
     if (step > 1) setStep(prev => prev - 1);
   };
 
+  const processSubmission = (paymentData = { paidAdvance: false }) => {
+    setIsSubmitting(true);
+    setPaymentInfo(paymentData);
+    const finalData = { ...formData, ...paymentData };
+
+    // Store banquet booking request in dynamic context
+    setTimeout(async () => {
+      try {
+        await addBooking(finalData);
+
+        // Send booking alerts (Admin details & Guest receipt confirmation) via secure server SMTP
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'new_booking', data: finalData })
+        });
+      } catch (err) {
+        console.error('Failed to dispatch booking emails:', err);
+      } finally {
+        setIsSubmitting(false);
+        setIsSubmitted(true);
+      }
+    }, 2000);
+  };
+
+  const handleRazorpayPayment = async () => {
+    if (!window.Razorpay) {
+      alert("Razorpay SDK failed to load. Are you online?");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      // Create order via our backend
+      const res = await fetch('/api/create-razorpay-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: advanceAmount })
+      });
+      const data = await res.json();
+      
+      if (!data.success) {
+        setIsSubmitting(false);
+        alert("Failed to initialize payment gateway. Please try again.");
+        return;
+      }
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_Sw2XA2RVzxAmX0',
+        amount: Number(advanceAmount) * 100, 
+        currency: "INR",
+        name: "The Bagara Kitchen",
+        description: "Banquet Advance Payment",
+        image: window.location.origin + "/logo.png",
+        order_id: data.order.id, // Use the dynamically generated order ID
+        handler: function (response) {
+          const paymentData = {
+            paidAdvance: true,
+            paymentId: response.razorpay_payment_id,
+            orderId: response.razorpay_order_id,
+            signature: response.razorpay_signature
+          };
+          processSubmission(paymentData);
+        },
+        prefill: {
+          name: formData.name,
+          email: formData.email,
+          contact: formData.phone,
+        },
+        theme: {
+          color: "#c5a059",
+        },
+        modal: {
+          ondismiss: function() {
+            setIsSubmitting(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        setIsSubmitting(false);
+        alert("Payment failed: " + response.error.description);
+      });
+      rzp.open();
+    } catch (err) {
+      console.error(err);
+      setIsSubmitting(false);
+      alert("Error processing payment.");
+    }
+  };
+
   const handleSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     if (formData.date < todayString) {
       alert("Action Blocked: You cannot book a banquet hall for a past date.");
@@ -103,30 +196,15 @@ const BookingModal = ({ isOpen, onClose }) => {
     }
     const digitCount = formData.phone.replace(/\D/g, '').length;
     if (digitCount < 10 || digitCount > 13) {
-      alert("Action Blocked: Phone number must contain between 10 and 13 digits (e.g. 9876543210 or +91 79953 61212).");
+      alert("Action Blocked: Phone number must contain between 10 and 13 digits (e.g. 9876543210 or +91 98765 43210).");
       return;
     }
 
-    setIsSubmitting(true);
-
-    // Store banquet booking request in dynamic context
-    setTimeout(async () => {
-      try {
-        await addBooking(formData);
-
-        // Send booking alerts (Admin details & Guest receipt confirmation) via secure server SMTP
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'new_booking', data: formData })
-        });
-      } catch (err) {
-        console.error('Failed to dispatch booking emails:', err);
-      } finally {
-        setIsSubmitting(false);
-        setIsSubmitted(true);
-      }
-    }, 2000);
+    if (advanceAmount && Number(advanceAmount) > 0) {
+      handleRazorpayPayment();
+    } else {
+      processSubmission({ paidAdvance: false });
+    }
   };
 
   if (!isOpen) return null;
@@ -207,6 +285,16 @@ const BookingModal = ({ isOpen, onClose }) => {
                   <p className="text-sm text-on-surface-variant font-light leading-relaxed max-w-sm mx-auto">
                     Thank you for choosing The Bagara Kitchen. Our premium events coordinator will reach out to you within 12 hours with details and custom menu templates.
                   </p>
+                  {paymentInfo?.paidAdvance ? (
+                    <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-medium">
+                      Advance payment of <strong className="font-bold text-emerald-300">₹{advanceAmount}</strong> received successfully! <br/>
+                      <span className="opacity-80 block mt-1">Payment ID: {paymentInfo.paymentId}</span>
+                    </div>
+                  ) : advanceAmount && Number(advanceAmount) > 0 ? (
+                    <div className="mt-4 p-3 bg-primary/10 border border-primary/30 rounded-xl text-primary text-xs font-medium">
+                      To confirm your reservation, an advance payment of <strong className="font-bold">₹{advanceAmount}</strong> is required. Our executive will share the payment link shortly.
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="bg-surface-low border border-outline-variant/30 rounded-xl p-4 text-left max-w-xs mx-auto text-xs space-y-2">
@@ -229,7 +317,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                 </button>
               </motionFramer>
             ) : (
-              <form onSubmit={step === 3 ? handleSubmit : handleNext} className="space-y-4 flex-grow flex flex-col justify-between overflow-hidden">
+              <form onSubmit={(e) => { e.preventDefault(); if (step < 3) handleNext(e); }} className="space-y-4 flex-grow flex flex-col justify-between overflow-hidden">
                 <div className="flex-grow overflow-y-auto pr-1 max-h-[50vh] sm:max-h-[55vh]">
                   <AnimatePresence mode="wait">
                   {step === 1 && (
@@ -329,7 +417,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                             type="text"
                             name="name"
                             required
-                            placeholder="Shri. Sai Kiran"
+                            placeholder="John Doe"
                             value={formData.name}
                             onChange={handleChange}
                             className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-primary"
@@ -342,7 +430,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                             type="email"
                             name="email"
                             required
-                            placeholder="saikiran@example.com"
+                            placeholder="johndoe@example.com"
                             value={formData.email}
                             onChange={handleChange}
                             className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-primary"
@@ -355,7 +443,7 @@ const BookingModal = ({ isOpen, onClose }) => {
                             type="tel"
                             name="phone"
                             required
-                            placeholder="+91 79953 61212"
+                            placeholder="+91 98765 43210"
                             value={formData.phone}
                             onChange={handleChange}
                             className="w-full bg-background border border-outline-variant/60 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-primary"
@@ -426,26 +514,38 @@ const BookingModal = ({ isOpen, onClose }) => {
                     <div />
                   )}
 
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex items-center gap-2 bg-primary hover:bg-[#059669] disabled:bg-primary/50 text-white font-bold py-3 px-6 rounded-lg text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-primary/20"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : step === 3 ? (
-                      <>
-                        Confirm Request
-                      </>
-                    ) : (
-                      <>
-                        Continue <ArrowRight size={16} />
-                      </>
-                    )}
-                  </button>
+                  {step === 3 ? (
+                    <div className="flex flex-col sm:flex-row gap-3 ml-auto">
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        className="flex items-center justify-center gap-2 bg-surface hover:bg-surface-high border border-outline-variant/30 text-white font-bold py-3 px-5 rounded-lg text-sm transition-all shadow-md"
+                      >
+                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRazorpayPayment}
+                        disabled={isSubmitting}
+                        className="flex items-center justify-center gap-2 bg-primary hover:bg-[#059669] disabled:bg-primary/50 text-white font-bold py-3 px-5 rounded-lg text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-primary/20"
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Pay Advance and Submit'
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex items-center gap-2 bg-primary hover:bg-[#059669] disabled:bg-primary/50 text-white font-bold py-3 px-6 rounded-lg text-sm transition-all hover:scale-105 active:scale-95 shadow-md shadow-primary/20"
+                    >
+                      Continue <ArrowRight size={16} />
+                    </button>
+                  )}
                 </div>
               </form>
             )}
