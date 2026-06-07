@@ -108,8 +108,8 @@ src/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/developer-tbk/TBK-HERO.git
-cd TBK-HERO
+git clone https://github.com/saipatel005/TheBagaraKitchen.git
+cd TheBagaraKitchen
 ```
 
 ### 2. Install dependencies

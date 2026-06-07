@@ -52,18 +52,22 @@ const Navbar = ({ onBookClick, onLoginClick, onDashboardClick }) => {
             : 'bg-transparent border-transparent py-5'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 flex justify-between items-center">
           {/* Logo */}
           <a 
             href="#home" 
             onClick={(e) => handleLinkClick(e, '#home')}
-            className="flex items-center gap-3 font-headline font-bold text-primary tracking-wide transition-all duration-300 hover:brightness-110 active:scale-95"
+            className="flex items-center gap-2 sm:gap-3 font-headline font-bold text-primary tracking-wide transition-all duration-300 hover:brightness-110 active:scale-95"
           >
-            <Logo className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-full" />
-            <span className="text-primary font-bold font-headline text-[14px] min-[360px]:text-[16px] sm:text-xl md:text-2xl tracking-wide flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5 leading-tight">
-              <span>The Bagara Kitchen</span>
-              <span>and Bar</span>
-            </span>
+            <Logo className="w-14 h-14 min-[360px]:w-16 min-[360px]:h-16 sm:w-24 sm:h-24 md:w-32 md:h-32 flex-shrink-0" />
+            <div className="flex flex-col text-left justify-center">
+              <span className="text-primary font-headline font-bold text-[12px] min-[360px]:text-[14px] sm:text-lg md:text-xl tracking-wider leading-none uppercase">
+                THE BAGARA KITCHEN
+              </span>
+              <span className="text-secondary font-body text-[6px] min-[360px]:text-[7px] sm:text-[9px] md:text-[10px] tracking-[0.18em] font-semibold mt-1 sm:mt-1.5 leading-none uppercase">
+                RESTAURANT • BAR • BANQUET
+              </span>
+            </div>
           </a>
 
           {/* Desktop Nav Links */}

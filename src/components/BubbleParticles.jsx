@@ -20,7 +20,7 @@ const BubbleParticles = () => {
 
     // Particle pool
     const particles = [];
-    const maxParticles = 40;
+    const maxParticles = 60; // Slightly fewer for just the froth area
 
     class Bubble {
       constructor() {
@@ -31,45 +31,49 @@ const BubbleParticles = () => {
 
       reset() {
         this.x = Math.random() * canvas.width;
-        this.y = canvas.height + Math.random() * 20;
-        this.size = Math.random() * 3 + 1; // Bubble radius 1px to 4px
-        this.speed = Math.random() * 1.5 + 0.8; // Upward speed
-        this.wobble = Math.random() * 0.5 - 0.25; // Left/right wobble
-        this.wobbleSpeed = Math.random() * 0.05 + 0.02;
-        this.wobbleAngle = Math.random() * Math.PI;
-        this.opacity = Math.random() * 0.5 + 0.2; // Start semi-transparent
+        // Start from the lower half of the canvas (near the froth line)
+        this.y = canvas.height * 0.5 + Math.random() * (canvas.height * 0.5);
+        this.size = Math.random() * 2 + 0.5; // Smaller fizz bubbles
+        this.speed = Math.random() * 2 + 1; // Faster popping motion
+        this.wobble = Math.random() * 0.5 - 0.25; 
+        this.wobbleSpeed = Math.random() * 0.1 + 0.05;
+        this.wobbleAngle = Math.random() * Math.PI * 2;
+        this.initialOpacity = Math.random() * 0.8 + 0.2; 
+        this.opacity = this.initialOpacity;
+        this.life = Math.random() * 25 + 10; // Frames before it pops/disappears
       }
 
       update() {
         this.y -= this.speed;
         this.wobbleAngle += this.wobbleSpeed;
         this.x += Math.sin(this.wobbleAngle) * 0.3;
+        this.life--;
 
-        // Fade out as it reaches the top
-        if (this.y < canvas.height * 0.3) {
-          this.opacity = Math.max(0, this.y / (canvas.height * 0.3)) * 0.7;
+        // Fade out quickly as it reaches the end of its life (popping)
+        if (this.life < 10) {
+          this.opacity = Math.max(0, (this.life / 10) * this.initialOpacity);
         }
 
-        // Reset if it goes off screen or completely fades
-        if (this.y < 0 || this.opacity <= 0) {
+        // Reset if it completely fades or goes above the canvas
+        if (this.life <= 0 || this.opacity <= 0 || this.y < -5) {
           this.reset();
         }
       }
 
       draw() {
+        if (this.opacity <= 0) return;
+
         ctx.beginPath();
-        // Golden brew bubbles
-        const gradient = ctx.createRadialGradient(
-          this.x, this.y, 0,
-          this.x, this.y, this.size
-        );
-        gradient.addColorStop(0, `rgba(233, 195, 73, ${this.opacity})`);
-        gradient.addColorStop(0.7, `rgba(233, 195, 73, ${this.opacity * 0.4})`);
-        gradient.addColorStop(1, 'rgba(233, 195, 73, 0)');
-        
-        ctx.fillStyle = gradient;
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        
+        // Very faint golden/white fill
+        ctx.fillStyle = `rgba(255, 245, 200, ${this.opacity * 0.4})`;
         ctx.fill();
+        
+        // Crisp brighter outline
+        ctx.lineWidth = Math.max(0.5, this.size * 0.2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${this.opacity})`;
+        ctx.stroke();
       }
     }
 
@@ -110,7 +114,7 @@ const BubbleParticles = () => {
   return (
     <canvas 
       ref={canvasRef} 
-      className="absolute inset-0 w-full h-full pointer-events-none z-10 opacity-80"
+      className="absolute inset-0 w-full h-full pointer-events-none z-10 mix-blend-screen opacity-90"
     />
   );
 };

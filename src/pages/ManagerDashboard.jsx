@@ -343,10 +343,9 @@ const ManagerDashboard = ({ onGoToPublic }) => {
         <div className="flex items-center gap-3">
           <Logo className="w-9 h-9 flex-shrink-0" />
           <div className="flex flex-col">
-            <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5 font-headline text-[14px] min-[360px]:text-base sm:text-lg text-white font-bold leading-tight">
-              <span>The Bagara Kitchen</span>
-              <span>and Bar</span>
-            </div>
+            <span className="text-white font-headline font-bold text-[14px] min-[360px]:text-base tracking-wider leading-none uppercase">
+              THE BAGARA KITCHEN
+            </span>
             <span className="text-[9px] text-secondary font-semibold uppercase tracking-wider block mt-1">Manager Portal</span>
           </div>
         </div>
@@ -493,14 +492,12 @@ const ManagerDashboard = ({ onGoToPublic }) => {
       <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-surface-low border-r lg:border-b-0 border-b border-outline-variant/30 justify-between flex-shrink-0 z-20">
         <div className="p-6 space-y-8">
           
-          {/* Brand Logo and Title */}
           <div className="flex items-center gap-3 border-b border-outline-variant/20 pb-5">
             <Logo className="w-10 h-10 flex-shrink-0" />
             <div className="flex flex-col">
-              <div className="flex flex-col gap-0.5 font-headline text-lg text-white font-bold leading-tight">
-                <span>The Bagara Kitchen</span>
-                <span>and Bar</span>
-              </div>
+              <span className="text-white font-headline font-bold text-lg tracking-wider leading-none uppercase">
+                THE BAGARA KITCHEN
+              </span>
               <span className="text-[10px] text-secondary font-semibold uppercase tracking-wider block mt-2">Manager Portal</span>
             </div>
           </div>

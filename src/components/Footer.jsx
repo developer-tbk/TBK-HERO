@@ -24,9 +24,16 @@ const Footer = () => {
 
           {/* Column 1: Brand pitch */}
           <div className="md:col-span-8 space-y-4">
-            <div className="flex items-center gap-2.5">
-              <Logo className="w-13 h-13" />
-              <h4 className="font-headline text-xl text-primary font-bold">The Bagara Kitchen and Bar</h4>
+            <div className="flex items-center gap-3">
+              <Logo className="w-20 h-20 md:w-24 md:h-24 flex-shrink-0" />
+              <div className="flex flex-col text-left justify-center">
+                <span className="text-primary font-headline font-bold text-lg md:text-xl tracking-wider leading-none uppercase">
+                  THE BAGARA KITCHEN
+                </span>
+                <span className="text-secondary font-body text-[9px] md:text-[10px] tracking-[0.18em] font-semibold mt-1.5 leading-none uppercase">
+                  RESTAURANT • BAR • BANQUET
+                </span>
+              </div>
             </div>
             <p className="text-sm font-light leading-relaxed max-w-sm">
               Honoring timeless slow-cooked culinary traditions while harmonizing bold Deccan flavors with premium craft beer pairings, all within a sophisticated and atmospheric dining experience.

@@ -253,10 +253,9 @@ const AdminDashboard = ({ onGoToPublic }) => {
         <div className="flex items-center gap-3">
           <Logo className="w-9 h-9 flex-shrink-0" />
           <div className="flex flex-col">
-            <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5 font-headline text-[14px] min-[360px]:text-base sm:text-lg text-white font-bold leading-tight">
-              <span>The Bagara Kitchen</span>
-              <span>and Bar</span>
-            </div>
+            <span className="text-white font-headline font-bold text-[14px] min-[360px]:text-base tracking-wider leading-none uppercase">
+              THE BAGARA KITCHEN
+            </span>
             <span className="text-[9px] text-on-surface-variant/80 font-light mt-1 flex items-center gap-1">
               <Shield size={9} className="text-secondary" /> Admin Console
             </span>
